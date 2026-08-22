@@ -23,6 +23,10 @@ async function saveHeadfulStorageState(context) {
         await fs.promises.writeFile(HEADFUL_STATE_PATH, JSON.stringify({ cookies }, null, 2));
         console.log(`[HEADFUL] Saved ${cookies.length} cookies to headful-storage-state.json`);
     } catch (e) {
+        // A stop can race with the periodic sync or the session waiter's cleanup.
+        // The context is already gone in that case, so there is no state left to save.
+        const message = String(e && e.message ? e.message : e);
+        if (/target page, context or browser has been closed|target closed/i.test(message)) return;
         console.error('[HEADFUL] Failed to save storage state:', e.message);
     }
 }
@@ -38,21 +42,23 @@ function setActiveHeadfulPage(nextPage) {
 }
 
 const teardownActiveSession = async () => {
-    if (!activeSession) return;
+    const session = activeSession;
+    if (!session) return;
+    session.stopping = true;
     try {
-        if (activeSession.interval) clearInterval(activeSession.interval);
+        if (session.interval) clearInterval(session.interval);
     } catch { }
-    if (activeSession.context && !activeSession.statelessExecution) {
-        await saveHeadfulStorageState(activeSession.context);
+    if (session.context && !session.statelessExecution) {
+        await saveHeadfulStorageState(session.context);
     }
     try {
-        if (activeSession.browser) {
-            await activeSession.browser.close();
-        } else if (activeSession.context) {
-            await activeSession.context.close();
+        if (session.browser) {
+            await session.browser.close();
+        } else if (session.context) {
+            await session.context.close();
         }
     } catch { }
-    activeSession = null;
+    if (activeSession === session) activeSession = null;
 };
 
 async function runHeadful(data, options = {}) {
@@ -72,7 +78,8 @@ async function runHeadful(data, options = {}) {
 
     const inspectModeEnabled = !!(data.targetActionId);
 
-    activeSession = { status: 'starting', startedAt: Date.now(), inspectModeEnabled };
+    const session = { status: 'starting', startedAt: Date.now(), inspectModeEnabled, stopping: false };
+    activeSession = session;
 
     const selectedUA = await selectUserAgent(false);
 
@@ -516,11 +523,20 @@ async function runHeadful(data, options = {}) {
         }
 
         const syncInterval = statelessExecution ? null : setInterval(() => {
-            if (activeSession && activeSession.context) {
+            if (activeSession === session && activeSession.context && !activeSession.stopping) {
                 saveHeadfulStorageState(activeSession.context).catch(() => {});
             }
         }, 30000);
-        activeSession = { browser, context, page, status: 'running', startedAt: activeSession.startedAt, inspectModeEnabled: activeSession.inspectModeEnabled, statelessExecution, interval: syncInterval };
+        Object.assign(session, {
+            browser,
+            context,
+            page,
+            status: 'running',
+            startedAt: activeSession.startedAt,
+            inspectModeEnabled: activeSession.inspectModeEnabled,
+            statelessExecution,
+            interval: syncInterval
+        });
 
         const responseData = {
             message: 'Headful session started.',
@@ -538,15 +554,12 @@ async function runHeadful(data, options = {}) {
             await new Promise((resolve) => context.once('close', resolve));
         }
         if (syncInterval) clearInterval(syncInterval);
-        if (!statelessExecution && context) {
-            await saveHeadfulStorageState(context).catch(() => {});
-        }
-        activeSession = null;
+        if (activeSession === session) activeSession = null;
         return responseData;
     } catch (error) {
         if (browser) await browser.close();
         else if (context) await context.close().catch(() => {});
-        activeSession = null;
+        if (activeSession === session) activeSession = null;
         throw error;
     }
 }
@@ -693,4 +706,3 @@ module.exports = {
     launchApiSession,
     ensureSessionId
 };
-

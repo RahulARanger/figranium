@@ -8,6 +8,7 @@ const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const ALLOWED_IPS_FILE = path.join(DATA_DIR, 'allowed_ips.json');
 const SESSION_SECRET_FILE = path.join(DATA_DIR, 'session_secret.txt');
 const TASKS_FILE = path.join(DATA_DIR, 'tasks.json');
+const TASK_WORKSPACE_CONFIG_FILE = path.join(DATA_DIR, 'task_workspace.json');
 const VNC_PASSWORD_FILE = path.join(DATA_DIR, 'vnc_password.txt');
 const API_KEY_FILE = path.join(DATA_DIR, 'api_key.json');
 const GEMINI_API_KEY_FILE = path.join(DATA_DIR, 'gemini_api_key.json');
@@ -26,6 +27,29 @@ const MAX_EXECUTIONS = 500;
 const REQUEST_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_RATE_LIMIT_MAX = Number(process.env.AUTH_RATE_LIMIT_MAX || 10);
 const DATA_RATE_LIMIT_MAX = Number(process.env.DATA_RATE_LIMIT_MAX || 100);
+const AUTH_REQUIRED = !['0', 'false', 'no', 'off'].includes(
+    String(process.env.AUTH_REQUIRED || 'true').trim().toLowerCase()
+);
+const IS_PRODUCTION = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
+const VITE_DEV_PORT = Number(process.env.VITE_DEV_PORT) || 5173;
+const LOCAL_DEV_ORIGIN_HOSTS = new Set([
+    `localhost:${VITE_DEV_PORT}`,
+    `127.0.0.1:${VITE_DEV_PORT}`,
+    `[::1]:${VITE_DEV_PORT}`
+]);
+const CSRF_ALLOWED_ORIGIN_HOSTS = new Set(
+    String(process.env.CSRF_ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .flatMap((value) => {
+            try {
+                return [new URL(value).host];
+            } catch {
+                return [];
+            }
+        })
+);
 const ALLOWED_IPS_TTL_MS = 5000;
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 const NOVNC_PORT = Number(process.env.NOVNC_PORT) || 54311;
@@ -42,6 +66,7 @@ module.exports = {
     ALLOWED_IPS_FILE,
     SESSION_SECRET_FILE,
     TASKS_FILE,
+    TASK_WORKSPACE_CONFIG_FILE,
     VNC_PASSWORD_FILE,
     API_KEY_FILE,
     GEMINI_API_KEY_FILE,
@@ -60,6 +85,10 @@ module.exports = {
     REQUEST_LIMIT_WINDOW_MS,
     AUTH_RATE_LIMIT_MAX,
     DATA_RATE_LIMIT_MAX,
+    AUTH_REQUIRED,
+    IS_PRODUCTION,
+    LOCAL_DEV_ORIGIN_HOSTS,
+    CSRF_ALLOWED_ORIGIN_HOSTS,
     ALLOWED_IPS_TTL_MS,
     SESSION_TTL_SECONDS,
     NOVNC_PORT,

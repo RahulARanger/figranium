@@ -164,13 +164,18 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                 finalUrl: data.final_url,
                 html: data.html,
                 data: data.data ?? data.html ?? null,
-                screenshotUrl: data.screenshot_url,
+                screenshotUrl: data.screenshot_url || data.screenshotUrl || undefined,
                 downloads: data.downloads,
                 logs: data.logs || [],
                 timestamp: new Date().toLocaleTimeString(),
             });
         } catch (e: any) {
             if (e?.name === 'AbortError') {
+                setResults((previous) => ({
+                    ...(previous || { url: taskToRun.url, logs: [], timestamp: '' }),
+                    logs: ['Execution stopped.'],
+                    timestamp: new Date().toLocaleTimeString(),
+                }));
                 showAlert('Execution stopped.', 'success');
                 setIsExecuting(false);
                 return;
@@ -202,7 +207,7 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                         finalUrl: data.final_url,
                         html: data.html,
                         data: data.data ?? data.html ?? null,
-                        screenshotUrl: data.screenshot_url,
+                        screenshotUrl: data.screenshot_url || data.screenshotUrl || undefined,
                         downloads: data.downloads,
                         logs: data.logs || [],
                         timestamp: new Date().toLocaleTimeString(),
@@ -211,12 +216,22 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                     return;
                 } catch (fallbackError: any) {
                     const errorMessage = formatExecutionError(fallbackError?.message || String(fallbackError), taskToRun?.mode);
+                    setResults((previous) => ({
+                        ...(previous || { url: taskToRun.url, logs: [], timestamp: '' }),
+                        logs: [`Execution failed: ${errorMessage}`],
+                        timestamp: new Date().toLocaleTimeString(),
+                    }));
                     showAlert(`Execution crash: ${errorMessage}`, 'error');
                     setIsExecuting(false);
                     return;
                 }
             }
             const errorMessage = formatExecutionError(e?.message || String(e), taskToRun?.mode);
+            setResults((previous) => ({
+                ...(previous || { url: taskToRun.url, logs: [], timestamp: '' }),
+                logs: [`Execution failed: ${errorMessage}`],
+                timestamp: new Date().toLocaleTimeString(),
+            }));
             showAlert(`Execution crash: ${errorMessage}`, 'error');
             if (taskToRun?.mode === 'headful') {
                 setIsExecuting(false);

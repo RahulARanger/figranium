@@ -125,7 +125,7 @@ async function runFigranite(data, options = {}) {
         const headless = options.headless !== undefined ? options.headless : true;
         const launchOptions = await launchBrowser({ rotateProxies: useRotateProxies, headless });
 
-        const recordingsDir = path.join(__dirname, '../../data/recordings');
+        const recordingsDir = path.join(__dirname, '../../../data/recordings');
         await fs.promises.mkdir(recordingsDir, { recursive: true });
 
         const selectedUA = await selectUserAgent(rotateUserAgents);
@@ -157,7 +157,7 @@ async function runFigranite(data, options = {}) {
                     try {
                         const safeName = originalName.replace(/[^a-zA-Z0-9_.-]/g, '_');
                         const downloadName = `${captureRunId}_dl_${Date.now()}_${safeName}`;
-                        const customCapturesDir = path.join(__dirname, '../../public', 'captures');
+                        const customCapturesDir = path.join(__dirname, '../../../public', 'captures');
                         // ⚡ Bolt: Use non-blocking directory creation
                         await fs.promises.mkdir(customCapturesDir, { recursive: true });
 
@@ -219,7 +219,7 @@ async function runFigranite(data, options = {}) {
         };
 
         const ensureCapturesDir = async () => {
-            const capturesDir = path.join(__dirname, '../../public', 'captures');
+            const capturesDir = path.join(__dirname, '../../../public', 'captures');
             // ⚡ Bolt: Use non-blocking directory creation
             await fs.promises.mkdir(capturesDir, { recursive: true });
             return capturesDir;
@@ -592,7 +592,7 @@ async function runFigranite(data, options = {}) {
         const extractionScript = extractionScriptRaw ? resolveTemplate(extractionScriptRaw) : undefined;
         const extraction = await runExtractionScript(extractionScript, cleanedHtml, page.url(), includeShadowDom);
 
-        const capturesDir = path.join(__dirname, '../../public', 'captures');
+        const capturesDir = path.join(__dirname, '../../../public', 'captures');
         // ⚡ Bolt: Use non-blocking directory creation
         await fs.promises.mkdir(capturesDir, { recursive: true });
 

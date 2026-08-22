@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const {
     USERS_FILE,
-    TASKS_FILE,
+    TASK_WORKSPACE_CONFIG_FILE,
+    DATA_DIR,
     EXECUTIONS_FILE,
     CREDENTIALS_FILE,
     API_KEY_FILE,
@@ -173,6 +174,61 @@ let tasksMap = new Map(); // stores { task, index }
 let tasksLoadPromise = null;
 let tasksMtime = 0;
 let tasksLastCheck = 0;
+let taskWorkspacePathCache = null;
+
+function normalizeTaskWorkspacePath(value) {
+    if (typeof value !== 'string' || !value.trim()) throw new Error('Workspace path is required');
+    const workspacePath = path.resolve(value.trim());
+    if (workspacePath === path.parse(workspacePath).root) throw new Error('Workspace path cannot be the filesystem root');
+    return workspacePath;
+}
+
+async function getTaskWorkspacePath() {
+    if (taskWorkspacePathCache) return taskWorkspacePathCache;
+    try {
+        const raw = await fs.promises.readFile(TASK_WORKSPACE_CONFIG_FILE, 'utf8');
+        const configuredPath = JSON.parse(raw)?.path;
+        if (configuredPath) taskWorkspacePathCache = normalizeTaskWorkspacePath(configuredPath);
+    } catch {
+        // Fall through to the environment variable and default.
+    }
+    if (!taskWorkspacePathCache) {
+        taskWorkspacePathCache = process.env.TASK_WORKSPACE_PATH
+            ? normalizeTaskWorkspacePath(process.env.TASK_WORKSPACE_PATH)
+            : DATA_DIR;
+    }
+    return taskWorkspacePathCache;
+}
+
+async function getTaskWorkspaceConfig() {
+    const workspacePath = await getTaskWorkspacePath();
+    return { path: workspacePath, file: path.join(workspacePath, 'tasks.json') };
+}
+
+async function saveTaskWorkspacePath(value) {
+    const nextPath = normalizeTaskWorkspacePath(value);
+    const currentPath = await getTaskWorkspacePath();
+    const nextFile = path.join(nextPath, 'tasks.json');
+    if (currentPath !== nextPath) {
+        const currentTasks = tasksCache || await loadTasks();
+        await fs.promises.mkdir(nextPath, { recursive: true });
+        let nextTasks = currentTasks;
+        try {
+            const existing = await fs.promises.readFile(nextFile, 'utf8');
+            nextTasks = JSON.parse(existing);
+        } catch {
+            await fs.promises.writeFile(nextFile, JSON.stringify(currentTasks, null, 2));
+        }
+        taskWorkspacePathCache = nextPath;
+        tasksCache = nextTasks;
+        tasksMtime = 0;
+        tasksLastCheck = Date.now();
+        syncTasksMap();
+    }
+    await fs.promises.mkdir(path.dirname(TASK_WORKSPACE_CONFIG_FILE), { recursive: true });
+    await fs.promises.writeFile(TASK_WORKSPACE_CONFIG_FILE, JSON.stringify({ path: nextPath }, null, 2));
+    return getTaskWorkspaceConfig();
+}
 
 function syncTasksMap() {
     if (!tasksCache) {
@@ -254,9 +310,10 @@ async function loadTasks() {
         return tasksCache;
     }
 
+    const { file: tasksFile } = await getTaskWorkspaceConfig();
     let stat;
     try {
-        stat = await fs.promises.stat(TASKS_FILE);
+        stat = await fs.promises.stat(tasksFile);
     } catch {
         tasksCache = [];
         tasksMtime = 0;
@@ -274,7 +331,7 @@ async function loadTasks() {
 
     tasksLoadPromise = (async () => {
         try {
-            const data = await fs.promises.readFile(TASKS_FILE, 'utf8');
+            const data = await fs.promises.readFile(tasksFile, 'utf8');
             const raw = JSON.parse(data);
             const { tasks: migrated, changed } = migrateTaskScripts(raw);
             tasksCache = migrated;
@@ -317,9 +374,11 @@ async function saveTasks(tasks) {
         return;
     }
 
-    await fs.promises.writeFile(TASKS_FILE, JSON.stringify(tasks, null, 2));
+    const { file: tasksFile } = await getTaskWorkspaceConfig();
+    await fs.promises.mkdir(path.dirname(tasksFile), { recursive: true });
+    await fs.promises.writeFile(tasksFile, JSON.stringify(tasks, null, 2));
     try {
-        const stat = await fs.promises.stat(TASKS_FILE);
+        const stat = await fs.promises.stat(tasksFile);
         tasksMtime = stat.mtimeMs;
     } catch {
         // ignore
@@ -1283,6 +1342,8 @@ module.exports = {
     saveUsers,
     loadTasks,
     saveTasks,
+    getTaskWorkspaceConfig,
+    saveTaskWorkspacePath,
     getTaskById,
     getTaskIndexById,
     loadExecutions,

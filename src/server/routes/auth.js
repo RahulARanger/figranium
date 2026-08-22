@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { loadUsers, saveUsers, saveSession } = require('../storage');
 const { authRateLimiter } = require('../middleware');
+const { AUTH_REQUIRED } = require('../constants');
 
 const router = express.Router();
 
@@ -128,7 +129,11 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/me', (req, res) => {
-    res.json(req.session.user ? { authenticated: true, user: req.session.user } : { authenticated: false });
+    res.json({
+        authRequired: AUTH_REQUIRED,
+        authenticated: AUTH_REQUIRED ? Boolean(req.session.user) : true,
+        user: req.session.user || null
+    });
 });
 
 module.exports = router;

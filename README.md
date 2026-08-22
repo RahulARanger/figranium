@@ -80,10 +80,89 @@ Figranium is proudly supported by:
 
 # Getting Started
 
-This starts the app on `http://localhost:11345` and the VNC viewer on `http://localhost:54311`.
+Figranium can run directly on your machine or in Docker. Docker is optional;
+the local setup uses the JSON file storage included in the project and does not
+require PostgreSQL, a container runtime, or a VNC stack.
+
+## Local setup (recommended)
+
+Requirements: Node.js 18 or newer. Chromium is installed automatically by the
+`npm install` postinstall step. The installer only downloads the Playwright
+browser binary on native macOS, Windows, and Linux hosts; it does not try to
+install operating-system packages or require `sudo`.
+
+Clone the repository and start the API and development UI together:
+
+```bash
+git clone https://github.com/figranium/figranium.git
+cd figranium
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The API runs on `http://localhost:11345` and the
+Vite development server proxies API requests to it. Local development starts
+with login disabled so the dashboard opens directly. Set `AUTH_REQUIRED=true`
+when you want to exercise the login flow locally.
+
+For a single production-style local process instead:
+
+```bash
+npm install
+npm run build
+npm start
+```
+
+Then open `http://localhost:11345`. Persistent data is written to `data/`, and
+no database setup is needed. If a browser download was skipped during install,
+run `npx playwright install chromium` once before running browser tasks.
+
+Task and flow definitions are stored in `data/tasks.json` by default. The
+workspace can be changed from Settings → Storage; all task lists and saves then
+use `<workspace>/tasks.json`. For headless configuration, set
+`TASK_WORKSPACE_PATH` before starting the server.
+
+Headless scrape and agent tasks work without any display server. Headful tasks
+work when the local machine has a desktop display. A headless Linux machine
+needs its own X server/Xvfb setup for headful mode; the Docker image continues
+to provide the optional Xvfb, x11vnc, and noVNC stack.
+
+## Install from GitHub with npm
+
+Figranium can be installed directly from this repository without publishing it to the npm registry. Node.js 18 or newer and Git are required.
+
+### Run directly with npx
+
+```bash
+npx github:figranium/figranium
+```
+
+To run a specific branch, tag, or commit:
+
+```bash
+npx github:figranium/figranium#main
+npx github:figranium/figranium#v0.14.4
+npx github:figranium/figranium#<commit-sha>
+```
+
+### Install locally or globally
+
+```bash
+npm install github:figranium/figranium
+npx figranium
+```
+
+For a globally available `figranium` command:
+
+```bash
+npm install --global github:figranium/figranium
+figranium
+```
+
+The package's postinstall step downloads the Playwright browser used by the default engine without installing OS packages. Set `FIGRANIUM_SKIP_PLAYWRIGHT_INSTALL=1` if browser installation should be handled separately, or set `FIGRANIUM_INSTALL_PLAYWRIGHT_DEPS=1` on a supported Linux host when Playwright system dependencies are also needed. Figranium creates a session secret in its data directory when `SESSION_SECRET` is omitted.
 
 
-## Docker Compose (Standard)
+## Docker Compose (optional)
 
 ### 1. Create a Project Directory
 
@@ -119,9 +198,11 @@ docker compose up -d
 ```
 
 
-## Git Clone (Multi-arch / ARM / Apple Silicon)
+## Docker from a Git clone (optional)
 
-The easiest way to run Figranium on any architecture (including M1/M2/M3 Macs) is via Docker Compose.
+Docker Compose is still useful for isolated deployments and for the bundled
+headful/noVNC viewer on headless hosts. It supports multi-arch images,
+including M1/M2/M3 Macs.
 
 1. Clone the repository:
 
@@ -142,7 +223,10 @@ Visit `http://localhost:11345`.
 
 ## Session Secret
 
-Set `SESSION_SECRET` before any run. A quick generator:
+For local use, Figranium generates and persists a session secret at
+`data/session_secret.txt` when `SESSION_SECRET` is not set. Set
+`SESSION_SECRET` explicitly for deployments where the same secret must be
+shared across restarts or instances. A quick generator:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
@@ -184,19 +268,23 @@ Key capabilities of **Figranite** include:
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `SESSION_SECRET` | Signs session cookies. Required. | — |
+| `SESSION_SECRET` | Signs session cookies. Generated in `data/session_secret.txt` when omitted. | auto-generated |
 | `ALLOWED_IPS` | Comma list for basic IP allowlisting. | none (open) |
 | `TRUST_PROXY` | Honor `X-Forwarded-*` when behind a reverse proxy. | `0` |
 | `ALLOW_PRIVATE_NETWORKS` | Allow scraping local/private IPs (SSRF risk). | `false` |
+| `AUTH_REQUIRED` | Require a session for the UI and session-protected APIs. The local `npm run dev` launcher sets this to `false`; production defaults to `true`. | `true` |
 | `VITE_DEV_PORT` | Port for front-end dev server. | `5173` |
 | `VITE_BACKEND_PORT` | Backend port for proxying + scripts. | `11345` |
 | `DB_TYPE` | Optional database type overriding disk storage. Set to `postgres` to use PostgreSQL. | — |
+| `TASK_WORKSPACE_PATH` | Default folder for task and flow definitions when no Settings workspace has been saved. | `data/` |
 | `DB_POSTGRESDB_HOST` | Hostname for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `DB_POSTGRESDB_PORT` | Port for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `DB_POSTGRESDB_USER` | Username for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `DB_POSTGRESDB_PASSWORD` | Password for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `USE_CLOAK_ENGINE` | Set to `true` to run the browser engine on CloakBrowser (stealth-patched Chromium) instead of the default Playwright stealth stack. | `false` |
 | `CLOAKBROWSER_LICENSE_KEY` | CloakBrowser license key for the latest binary (read natively by cloakbrowser; `npx cloakbrowser login` writes `~/.cloakbrowser/license.key`). Without a key the free legacy binary is used. | — |
+| `FIGRANIUM_INSTALL_PLAYWRIGHT_DEPS` | Also install Playwright OS dependencies during `npm install`; intended for supported Linux hosts. | `0` |
+| `FIGRANIUM_SKIP_PLAYWRIGHT_INSTALL` | Skip automatic Playwright browser installation. | `0` |
 
 Proxy rotation also respects `data/proxies.json` (see below), and `data/allowed_ips.json` works as an alternate allowlist format.
 
@@ -206,7 +294,7 @@ Proxy rotation also respects `data/proxies.json` (see below), and `data/allowed_
 - `NODE_ENV=production` enables the bundled `dist/` client and reduces console verbosity.
 - `HOST=0.0.0.0` allows binding beyond localhost inside Docker containers, while `PORT` overrides the Express listen port (defaults to `11345`).
 - Set `LOG_LEVEL` to `debug` if you need more Playwright or proxy diagnostics; this can also be a custom wrapper when running `node server.js`.
-- **Headful mode:** the headful/visible browser binds to `54311`, so open that port alongside `11345` when running `headful.js` or other headful flows.
+- **Headful mode:** the Docker image exposes the optional noVNC viewer on `54311`. Native desktop runs use the local display directly; headless native Linux runs require an X server/Xvfb setup.
 
 # UI Walkthrough
 

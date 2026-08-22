@@ -21,6 +21,7 @@ const formatAuthError = (errorCode: unknown, fallback: string) => {
 export function useAuth() {
     const navigate = useNavigate();
     const [user, setUser] = useState<User | null>(null);
+    const [authRequired, setAuthRequired] = useState(true);
     const [authStatus, setAuthStatus] = useState<'checking' | 'login' | 'setup' | 'authenticated'>('checking');
     const [authError, setAuthError] = useState('');
     const [authBusy, setAuthBusy] = useState(false);
@@ -29,8 +30,11 @@ export function useAuth() {
         try {
             const res = await fetch('/api/auth/me', { credentials: 'include' });
             const data = await res.json();
-            if (data.authenticated) {
-                setUser(data.user);
+            if (typeof data.authRequired === 'boolean') {
+                setAuthRequired(data.authRequired);
+            }
+            if (data.authRequired === false || data.authenticated) {
+                setUser(data.user || null);
                 setAuthStatus('authenticated');
                 return true;
             }
@@ -94,13 +98,14 @@ export function useAuth() {
     }, [authStatus, authBusy, navigate, checkAuth]);
 
     const logout = useCallback(async (requestConfirm: (msg: string) => Promise<boolean>) => {
+        if (!authRequired) return;
         const confirmed = await requestConfirm('Are you sure you want to log out?');
         if (!confirmed) return;
         await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
         setUser(null);
         setAuthStatus('login');
         navigate('/');
-    }, [navigate]);
+    }, [authRequired, navigate]);
 
     return {
         user,

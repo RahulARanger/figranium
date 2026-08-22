@@ -1,13 +1,20 @@
 {
   "name": "figranium",
-  "version": "0.14.4",
-  "main": "index.js",
+  "version": "0.15.0",
+  "main": "agent.js",
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "figranium": "bin/cli.js"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/start-local.js",
+    "dev:ui": "vite",
+    "dev:local": "node scripts/start-local.js",
     "server": "node server.js",
+    "mcp": "node src/mcp/server.js",
+    "cli": "node bin/cli.js",
     "start": "node server.js",
     "build": "tsc && vite build",
     "preview": "vite preview",
@@ -22,6 +29,7 @@
     "agent.js",
     "headful.js",
     "scrape.js",
+    "stealth-chromium.js",
     "common-utils.js",
     "html-utils.js",
     "url-utils.js",
@@ -31,9 +39,12 @@
     "src/server/cron-parser.js",
     "src/server/scheduler.js",
     "src/server/routes/schedules.js",
+    "src/server/**/*.js",
+    "src/agent/**/*.js",
     "extraction-worker.js",
     "start-vnc.sh",
     "scripts/postinstall.js",
+    "scripts/start-local.js",
     "README.md",
     "LICENSE",
     "!public/captures",
@@ -46,6 +57,7 @@
   "license": "GPL-3.0-only",
   "description": "Figranium: Deterministic Control for an Agentic World",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "cloakbrowser": "^0.5.8",

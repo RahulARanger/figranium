@@ -1,6 +1,14 @@
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
-const { REQUEST_LIMIT_WINDOW_MS, AUTH_RATE_LIMIT_MAX, DATA_RATE_LIMIT_MAX } = require('./constants');
+const {
+    REQUEST_LIMIT_WINDOW_MS,
+    AUTH_RATE_LIMIT_MAX,
+    DATA_RATE_LIMIT_MAX,
+    AUTH_REQUIRED,
+    IS_PRODUCTION,
+    LOCAL_DEV_ORIGIN_HOSTS,
+    CSRF_ALLOWED_ORIGIN_HOSTS
+} = require('./constants');
 const { loadAllowedIps, loadApiKey } = require('./storage');
 const { normalizeIp } = require('./utils');
 
@@ -47,10 +55,14 @@ const csrfProtection = (req, res, next) => {
         }
     }
 
-    if (originHost && originHost !== host) {
+    const isAllowedConfiguredOrigin = (candidateHost) =>
+        CSRF_ALLOWED_ORIGIN_HOSTS.has(candidateHost) ||
+        (!IS_PRODUCTION && LOCAL_DEV_ORIGIN_HOSTS.has(candidateHost));
+
+    if (originHost && originHost !== host && !isAllowedConfiguredOrigin(originHost)) {
         return res.status(403).json({ error: 'CSRF_ORIGIN_MISMATCH' });
     }
-    if (refererHost && refererHost !== host) {
+    if (refererHost && refererHost !== host && !isAllowedConfiguredOrigin(refererHost)) {
         return res.status(403).json({ error: 'CSRF_REFERER_MISMATCH' });
     }
 
@@ -80,7 +92,7 @@ const requireIpAllowlist = async (req, res, next) => {
 };
 
 const requireAuth = (req, res, next) => {
-    if (req.session.user) {
+    if (!AUTH_REQUIRED || req.session.user) {
         next();
     } else {
         if (req.xhr || req.path.startsWith('/api/')) {
@@ -92,12 +104,12 @@ const requireAuth = (req, res, next) => {
 };
 
 const requireAuthForSettings = (req, res, next) => {
-    // Always require authentication for settings, even in development.
+    // Settings follow the same explicit local-development auth setting as the rest of the UI.
     return requireAuth(req, res, next);
 };
 
 const requireAuthOrApiKey = async (req, res, next) => {
-    if (req.session.user) {
+    if (!AUTH_REQUIRED || req.session.user) {
         return next();
     }
     return requireApiKey(req, res, next);

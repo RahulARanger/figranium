@@ -9,7 +9,8 @@ const {
     loadClaudeApiKey, saveClaudeApiKey,
     loadOllamaApiKey, saveOllamaApiKey,
     loadAiModels, saveAiModels,
-    loadThemeConfig, saveThemeConfig
+    loadThemeConfig, saveThemeConfig,
+    getTaskWorkspaceConfig, saveTaskWorkspacePath
 } = require('../storage');
 const cookie = require('cookie');
 const { getUserAgentConfig, setUserAgentSelection } = require('../../../user-agent-settings');
@@ -374,6 +375,27 @@ router.post('/ai-models', csrfProtection, dataRateLimiter, requireAuthForSetting
     } catch (e) {
         console.error('[AI_MODELS] Save failed:', e);
         res.status(500).json({ error: 'AI_MODELS_SAVE_FAILED' });
+    }
+});
+
+// Task workspace
+router.get('/task-workspace', requireAuthForSettings, async (_req, res) => {
+    try {
+        res.json(await getTaskWorkspaceConfig());
+    } catch (e) {
+        console.error('[TASK_WORKSPACE] Load failed:', e);
+        res.status(500).json({ error: 'TASK_WORKSPACE_LOAD_FAILED' });
+    }
+});
+
+router.post('/task-workspace', csrfProtection, dataRateLimiter, requireAuthForSettings, async (req, res) => {
+    try {
+        const workspacePath = req.body && typeof req.body.path === 'string' ? req.body.path : '';
+        if (!workspacePath.trim()) return res.status(400).json({ error: 'WORKSPACE_PATH_REQUIRED' });
+        res.json(await saveTaskWorkspacePath(workspacePath));
+    } catch (e) {
+        console.error('[TASK_WORKSPACE] Save failed:', e);
+        res.status(400).json({ error: 'INVALID_WORKSPACE_PATH', message: e.message });
     }
 });
 

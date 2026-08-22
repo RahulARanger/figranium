@@ -24,6 +24,10 @@ Before implementing **any non-trivial change** (anything beyond a simple bug fix
 
 Do not create a separate plan file unless explicitly asked. Post the plan in chat.
 
+## Version Bump Branching
+
+When a task includes bumping the version in `package.json`, AI agents must create or switch to a dedicated branch before making the version bump. Use a descriptive branch name with the repository's branch prefix, for example `codex/version-0.15.0`. Keep the version bump and its related changelog or release metadata changes on that branch; do not make version-bump commits directly on `main` unless the user explicitly requests it.
+
 ## Architecture
 
 **Request flow:** Frontend (React/Vite) → Express API (`server.js`) → execution engine (`scrape.js` for headless, `headful.js` for VNC browser sessions) → `src/agent/index.js` (orchestrator) → `src/agent/action-handler.js` (executes individual actions).

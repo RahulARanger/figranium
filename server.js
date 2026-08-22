@@ -29,7 +29,8 @@ const {
     SESSION_TTL_SECONDS,
     NOVNC_PORT,
     WEBSOCKIFY_PATH,
-    VNC_PASSWORD_FILE
+    VNC_PASSWORD_FILE,
+    AUTH_REQUIRED
 } = require('./src/server/constants');
 
 const {
@@ -552,7 +553,6 @@ app.get('/headful/selector_stream', requireAuth, (req, res) => {
 
 app.post('/api/headful/inspect', requireAuth, toggleInspectMode);
 app.post('/headful/inspect', requireAuth, toggleInspectMode);
-
 app.get('/api/headful/vnc-password', requireAuth, (req, res) => {
     try {
         if (fs.existsSync(VNC_PASSWORD_FILE)) {
@@ -604,7 +604,7 @@ findAvailablePort(port, 20)
             // Authentication check for WebSocket upgrade
             const cookies = cookie.parse(req.headers.cookie || '');
             const signedSid = cookies['connect.sid'];
-            let isAuthenticated = false;
+            let isAuthenticated = !AUTH_REQUIRED;
 
             if (signedSid && signedSid.startsWith('s:')) {
                 const sid = signature.unsign(signedSid.slice(2), SESSION_SECRET);

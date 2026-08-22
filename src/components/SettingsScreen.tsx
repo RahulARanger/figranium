@@ -163,6 +163,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
     const [userAgentSelection, setUserAgentSelection] = useState('system');
     const [userAgentOptions, setUserAgentOptions] = useState<string[]>([]);
     const [userAgentLoading, setUserAgentLoading] = useState(false);
+    const [workspacePath, setWorkspacePath] = useState('');
+    const [workspaceLoading, setWorkspaceLoading] = useState(false);
+    const [workspaceSaving, setWorkspaceSaving] = useState(false);
 
     const { theme, setTheme } = useTheme();
 
@@ -766,6 +769,39 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
         }
     }, [aiModels, onNotify]);
 
+    const loadWorkspacePath = useCallback(async () => {
+        setWorkspaceLoading(true);
+        try {
+            const res = await fetch('/api/settings/task-workspace', { credentials: 'include' });
+            if (res.ok) setWorkspacePath((await res.json()).path || '');
+        } catch { /* keep current value */ } finally {
+            setWorkspaceLoading(false);
+        }
+    }, []);
+
+    const saveWorkspacePath = useCallback(async (nextPath: string) => {
+        setWorkspaceSaving(true);
+        try {
+            const res = await fetch('/api/settings/task-workspace', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ path: nextPath.trim() })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                onNotify(data.message || 'Failed to save task workspace.', 'error');
+                return;
+            }
+            setWorkspacePath(data.path || nextPath.trim());
+            onNotify('Task workspace saved.', 'success');
+        } catch {
+            onNotify('Failed to save task workspace.', 'error');
+        } finally {
+            setWorkspaceSaving(false);
+        }
+    }, [onNotify]);
+
     // Load system data on mount and when tab changes to system
     useEffect(() => {
         if (tab === 'system') {
@@ -777,6 +813,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
             loadUserAgent();
             loadCredentials();
             loadAiModelsFromServer();
+            loadWorkspacePath();
         }
         if (tab === 'proxies') loadProxies();
     }, [tab]);
@@ -791,6 +828,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
             loadOllamaApiKeys();
             loadCredentials();
             loadAiModelsFromServer();
+            loadWorkspacePath();
         }
     }, []);
 
@@ -1168,7 +1206,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
                             onSelect={(t) => setTheme(t.id)}
                         />
                         <VersionPanel version={APP_VERSION} />
-                        <StoragePanel onClearStorage={onClearStorage} />
+                        <StoragePanel
+                            onClearStorage={onClearStorage}
+                            workspacePath={workspacePath}
+                            workspaceLoading={workspaceLoading}
+                            workspaceSaving={workspaceSaving}
+                            onSaveWorkspacePath={saveWorkspacePath}
+                        />
                     </>
                 )}
 
