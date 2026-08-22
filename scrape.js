@@ -7,7 +7,7 @@ const { selectUserAgent } = require('./user-agent-settings');
 const { formatHTML } = require('./html-utils');
 const { validateUrl } = require('./url-utils');
 const { toCsvString } = require('./common-utils');
-const { buildWorkflowVariables, resolveWorkflowValue } = require('./src/server/workflow-variables');
+const { getWorkflowVariables, resolveWorkflowValue } = require('./src/server/workflow-variables');
 
 const HEADFUL_STATE_PATH = path.join(__dirname, 'data', 'headful-storage-state.json');
 const USELESS_SELECTOR = 'script, style, svg, link, noscript';
@@ -112,7 +112,7 @@ async function runExtractionScript(script, html, pageUrl) {
 }
 
 async function runScrape(data) {
-    const runtimeVars = buildWorkflowVariables(data.variables || {}, data.taskVariables || {});
+    const runtimeVars = getWorkflowVariables(data);
     const url = resolveWorkflowValue(data.url, runtimeVars);
     const customHeaders = resolveWorkflowValue(data.headers || {}, runtimeVars);
     const userSelector = resolveWorkflowValue(data.selector, runtimeVars);

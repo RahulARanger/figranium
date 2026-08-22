@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { buildWorkflowVariables, resolveWorkflowValue } = require('../src/server/workflow-variables');
+const { buildWorkflowVariables, getWorkflowVariables, resolveWorkflowValue } = require('../src/server/workflow-variables');
 
 const originalEnv = process.env.WORKFLOW_ENV_TEST;
 
@@ -7,13 +7,17 @@ try {
     process.env.WORKFLOW_ENV_TEST = 'from-env';
 
     const variables = buildWorkflowVariables(
-        { saved: { type: 'string', value: 'from-task' }, shared: { value: 'task-value' } },
+        { saved: { type: 'string', value: 'from-task' }, shared: { value: 'task-value' }, WORKFLOW_ENV_TEST: 'task-value' },
         { shared: 'from-run' }
     );
 
     assert.strictEqual(variables.WORKFLOW_ENV_TEST, 'from-env');
     assert.strictEqual(variables.saved, 'from-task');
     assert.strictEqual(variables.shared, 'from-run');
+    assert.strictEqual(
+        getWorkflowVariables({ taskSnapshot: { variables: { WORKFLOW_ENV_TEST: { value: 'task-value' }, saved: { value: 'from-task' } } } }).WORKFLOW_ENV_TEST,
+        'from-env'
+    );
     assert.strictEqual(
         resolveWorkflowValue('{$WORKFLOW_ENV_TEST}/{$saved}/{$shared}', variables),
         'from-env/from-task/from-run'

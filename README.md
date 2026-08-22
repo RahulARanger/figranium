@@ -359,7 +359,7 @@ In the editor, Agent Mode runs headlessly by default. Use the Headless/Headful t
 
 ### Workflow environment variables
 
-When the server starts, it loads `.env` from the directory where it was launched. Those values are available to every workflow through the existing `{$VARIABLE_NAME}` syntax, including Agent, Scrape, Headful, scheduled, API, UI, and MCP runs. Saved task variables override `.env` defaults, and variables supplied for an individual run override both. Environment values are used at runtime and are not saved into task definitions.
+When the server starts, it loads `.env` from the directory where it was launched. Those values are available to every workflow through the existing `{$VARIABLE_NAME}` syntax, including Agent, Scrape, Headful, scheduled, API, UI, and MCP runs. Saved task values act as defaults, `.env` values override those defaults, and variables supplied for an individual run override both. Environment values are used at runtime and are not saved into task definitions. Variable names are case-sensitive.
 
 ### MCP task authoring
 

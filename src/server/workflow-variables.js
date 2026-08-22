@@ -15,13 +15,32 @@ function getEnvironmentVariables() {
     return Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== undefined));
 }
 
-// Environment values are defaults. Later sources are more specific and
-// override them (saved task variables, then per-run variables).
-function buildWorkflowVariables(...sources) {
+// Saved task values are defaults. The launch environment overrides those
+// defaults, and explicit values for one run override both.
+function buildWorkflowVariables(taskVariables = {}, runVariables = {}) {
     return Object.assign(
+        flattenVariableSource(taskVariables),
         getEnvironmentVariables(),
-        ...sources.map(flattenVariableSource)
+        flattenVariableSource(runVariables)
     );
+}
+
+function getWorkflowVariables(data = {}) {
+    if (data.workflowVariables && typeof data.workflowVariables === 'object') {
+        return flattenVariableSource(data.workflowVariables);
+    }
+
+    // Editor runs include the saved task snapshot separately from values
+    // supplied for this run, so environment values can override task defaults.
+    if (data.taskSnapshot && typeof data.taskSnapshot === 'object') {
+        return buildWorkflowVariables(
+            data.taskSnapshot.variables || {},
+            data.runtimeVariables || {}
+        );
+    }
+
+    // Direct CLI/agent calls treat their supplied variables as run-time input.
+    return buildWorkflowVariables({}, data.variables || data.taskVariables || {});
 }
 
 function resolveWorkflowValue(value, variables) {
@@ -53,5 +72,6 @@ function resolveWorkflowValue(value, variables) {
 
 module.exports = {
     buildWorkflowVariables,
+    getWorkflowVariables,
     resolveWorkflowValue
 };

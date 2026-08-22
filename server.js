@@ -293,7 +293,7 @@ const preprocessScrapeRequest = (req) => {
     if (typeof vars === 'string') {
         try { parsedVars = JSON.parse(vars); } catch { parsedVars = {}; }
     }
-    const safeVars = buildWorkflowVariables(parsedVars);
+    const safeVars = buildWorkflowVariables({}, parsedVars);
 
     const resolve = (str) => {
         if (typeof str !== 'string') return str;
@@ -362,6 +362,7 @@ const executeTaskById = async (req, res) => {
         taskId: task.id,
         variables: runtimeVars,
         taskVariables: runtimeVars,
+        workflowVariables: runtimeVars,
         actions: task.actions || [],
         mode: task.mode || 'agent',
         extractionScript: req.body.extractionScript || task.extractionScript
@@ -453,6 +454,7 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
                 runId,
                 variables: runtimeVars,
                 taskVariables: runtimeVars,
+                workflowVariables: runtimeVars,
                 actions: task.actions || [],
                 mode: 'agent'
             }, { localPort: port, protocol: req.protocol, headless });
@@ -496,6 +498,7 @@ app.post('/headful', requireAuth, dataRateLimiter, concurrencyGate, (req, res) =
         const vars = buildWorkflowVariables(rawVars);
         if (req.body.variables) req.body.variables = vars;
         if (req.body.taskVariables) req.body.taskVariables = vars;
+        req.body.workflowVariables = vars;
         if (typeof req.body.url === 'string') {
             req.body.url = req.body.url.replace(/\{\$(\w+)\}/g, (_match, name) => {
                 const value = vars[name];

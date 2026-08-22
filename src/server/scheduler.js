@@ -208,6 +208,7 @@ async function executeScheduledTask(taskId) {
         taskId: task.id,
         variables: runtimeVars,
         taskVariables: runtimeVars,
+        workflowVariables: runtimeVars,
         actions: task.actions || [],
         mode: task.mode || 'agent',
         runSource: 'scheduler'

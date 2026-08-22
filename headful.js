@@ -6,7 +6,7 @@ const { selectUserAgent } = require('./user-agent-settings');
 const { validateUrl, setupNavigationProtection } = require('./url-utils');
 const { parseBooleanFlag } = require('./common-utils');
 const { Mutex } = require('./src/server/utils');
-const { buildWorkflowVariables, resolveWorkflowValue } = require('./src/server/workflow-variables');
+const { buildWorkflowVariables, getWorkflowVariables, resolveWorkflowValue } = require('./src/server/workflow-variables');
 
 const HEADFUL_PROFILE_DIR = path.join(__dirname, 'data', 'browser-profile-headful');
 const HEADFUL_STATE_PATH = path.join(__dirname, 'data', 'headful-storage-state.json');
@@ -64,7 +64,9 @@ const teardownActiveSession = async () => {
 
 async function runHeadful(data, options = {}) {
     const { res } = options;
-    const runtimeVars = buildWorkflowVariables(data.variables || {}, data.taskVariables || {});
+    const runtimeVars = data.workflowVariables
+        ? getWorkflowVariables(data)
+        : buildWorkflowVariables(data.variables || data.taskVariables || {});
     data = {
         ...data,
         variables: runtimeVars,
