@@ -40,7 +40,8 @@ const {
 const {
     loadTasks,
     getTaskById,
-    appendExecution
+    appendExecution,
+    updateExecution
 } = require('./src/server/storage');
 
 // Context & Utils
@@ -413,6 +414,12 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
     if (task.mode && task.mode !== 'agent') {
         return res.status(400).json({ error: 'ASYNC_AGENT_ONLY', details: 'Asynchronous MCP execution currently supports agent tasks.' });
     }
+    if (!Array.isArray(task.actions)) {
+        return res.status(400).json({
+            error: 'TASK_ACTIONS_REQUIRED',
+            details: 'This task contains instructions or steps but no executable actions. Convert it to an AGENT_SPEC actions array before running it.'
+        });
+    }
 
     const runId = `mcp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const clientVars = req.body?.variables || req.body?.taskVariables || {};
@@ -423,8 +430,28 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
     const runtimeVars = { ...taskVars, ...clientVars };
     const startedAt = Date.now();
 
+    try {
+        await appendExecution({
+            id: runId,
+            timestamp: startedAt,
+            method: 'POST',
+            path: `/api/tasks/${taskId}/run-async`,
+            status: 'queued',
+            durationMs: 0,
+            source: 'mcp',
+            mode: 'agent',
+            taskId,
+            taskName: task.name || null,
+            url: task.url || null,
+            result: null
+        });
+    } catch (error) {
+        return res.status(500).json({ error: 'EXECUTION_QUEUE_FAILED', details: error.message });
+    }
+
     res.status(202).json({ runId, executionId: runId, taskId, status: 'queued' });
     setImmediate(async () => {
+        await updateExecution(runId, { status: 'started', durationMs: Date.now() - startedAt }).catch(() => {});
         sendExecutionUpdate(runId, { status: 'started', runId, taskId });
         try {
             const result = await runFigranite({
@@ -437,37 +464,11 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
                 actions: task.actions || [],
                 mode: 'agent'
             }, { localPort: port, protocol: req.protocol });
-            await appendExecution({
-                id: runId,
-                timestamp: startedAt,
-                method: 'POST',
-                path: `/api/tasks/${taskId}/run-async`,
-                status: 200,
-                durationMs: Date.now() - startedAt,
-                source: 'mcp',
-                mode: 'agent',
-                taskId,
-                taskName: task.name || null,
-                url: task.url || null,
-                result
-            });
+            await updateExecution(runId, { status: 200, durationMs: Date.now() - startedAt, result });
             sendExecutionUpdate(runId, { status: 'completed', runId, taskId, result });
         } catch (error) {
             const failure = { error: 'Figranite Engine failed', details: error.message };
-            await appendExecution({
-                id: runId,
-                timestamp: startedAt,
-                method: 'POST',
-                path: `/api/tasks/${taskId}/run-async`,
-                status: 500,
-                durationMs: Date.now() - startedAt,
-                source: 'mcp',
-                mode: 'agent',
-                taskId,
-                taskName: task.name || null,
-                url: task.url || null,
-                result: failure
-            });
+            await updateExecution(runId, { status: 500, durationMs: Date.now() - startedAt, result: failure });
             sendExecutionUpdate(runId, { status: 'failed', runId, taskId, ...failure });
         }
     });

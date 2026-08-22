@@ -545,6 +545,17 @@ async function appendExecution(entry) {
     }, 1000);
 }
 
+async function updateExecution(id, updates) {
+    await loadExecutions();
+    const index = executionsCache.findIndex((entry) => entry.id === id);
+    if (index === -1) return null;
+    const updated = { ...executionsCache[index], ...updates };
+    executionsCache[index] = updated;
+    executionsMap.set(id, updated);
+    await saveExecutions(executionsCache);
+    return updated;
+}
+
 // API Key Storage
 let apiKeyCache = undefined;
 let apiKeyLoadPromise = null;
@@ -1359,6 +1370,7 @@ module.exports = {
     saveExecutions,
     getExecutionById,
     appendExecution,
+    updateExecution,
     flushExecutions,
     loadApiKey,
     saveApiKey,
