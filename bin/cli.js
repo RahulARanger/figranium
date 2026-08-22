@@ -2,6 +2,12 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
+const { loadEnvFile } = require('../src/server/load-env');
+
+// Load .env before changing into the installed package directory so `npx figranium`
+// reads configuration from the user's current working directory.
+loadEnvFile(process.cwd());
 
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'production';
@@ -9,6 +15,33 @@ if (!process.env.NODE_ENV) {
 
 const rootDir = path.resolve(__dirname, '..');
 process.chdir(rootDir);
+
+function runHealthCheck() {
+  const packageJson = require('../package.json');
+  const distIndexPath = path.join(rootDir, 'dist', 'index.html');
+  const markerPath = path.join(rootDir, '.figranium-build.json');
+  const hasDist = fs.existsSync(distIndexPath);
+  let marker = null;
+
+  if (fs.existsSync(markerPath)) {
+    try {
+      marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+    } catch {
+      marker = null;
+    }
+  }
+
+  const versionMatches = marker && marker.packageVersion === packageJson.version;
+  const buildPassed = marker && marker.status === 'passed';
+  const healthy = hasDist && versionMatches && buildPassed;
+
+  console.log(`Figranium health: ${healthy ? 'OK' : 'NOT READY'}`);
+  console.log(`- Package version: ${packageJson.version}`);
+  console.log(`- Frontend: ${hasDist ? 'present' : 'missing'}`);
+  console.log(`- Build: ${buildPassed ? `passed at ${marker.builtAt}` : 'not recorded as passed'}`);
+  console.log(`- Build version: ${marker ? marker.packageVersion : 'unknown'}`);
+  process.exitCode = healthy ? 0 : 1;
+}
 
 const args = process.argv.slice(2);
 const flags = {};
@@ -30,6 +63,11 @@ for (let i = 0; i < args.length; i++) {
   } else {
     params.push(args[i]);
   }
+}
+
+if (params[0] === 'health' && params.length === 1 && Object.keys(flags).length === 0) {
+  runHealthCheck();
+  return;
 }
 
 if (flags.help || flags.h || (params.length === 0 && Object.keys(flags).length === 1 && flags.help)) {

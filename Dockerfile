@@ -8,6 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY scripts ./scripts
 ENV FIGRANIUM_SKIP_PLAYWRIGHT_INSTALL=1 \
+    FIGRANIUM_SKIP_BUILD=1 \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci --include=dev
 
@@ -43,6 +44,7 @@ RUN if [ "$INSTALL_VNC" = "1" ]; then \
 COPY package*.json ./
 COPY scripts ./scripts
 ENV FIGRANIUM_SKIP_PLAYWRIGHT_INSTALL=1 \
+    FIGRANIUM_SKIP_BUILD=1 \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm ci --omit=dev
 

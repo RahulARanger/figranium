@@ -6,6 +6,10 @@ const path = require('path');
 const crypto = require('crypto');
 const cookie = require('cookie');
 const signature = require('cookie-signature');
+const { loadEnvFile } = require('./src/server/load-env');
+
+// Load deployment settings from the directory where the server is launched.
+loadEnvFile();
 
 // Catch unhandled promise rejections from playwright-extra stealth plugin.
 // When pages close before the plugin finishes async CDP initialization,

@@ -2,6 +2,11 @@
 'use strict';
 
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+const packageJson = require('../package.json');
+const buildMarkerPath = path.join(process.cwd(), '.figranium-build.json');
 
 const runNpx = (args) => spawnSync(
   process.platform === 'win32' ? 'npx.cmd' : 'npx',
@@ -9,32 +14,72 @@ const runNpx = (args) => spawnSync(
   { stdio: 'inherit', shell: false }
 );
 
+const writeBuildMarker = () => {
+  fs.writeFileSync(buildMarkerPath, `${JSON.stringify({
+    status: 'passed',
+    packageVersion: packageJson.version,
+    builtAt: new Date().toISOString(),
+    nodeVersion: process.version
+  }, null, 2)}\n`);
+};
+
+const buildIfNeeded = () => {
+  if (process.env.FIGRANIUM_SKIP_BUILD === '1') {
+    console.log('[postinstall] Skipping frontend build (FIGRANIUM_SKIP_BUILD=1).');
+    return 0;
+  }
+
+  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
+  if (fs.existsSync(distIndexPath)) {
+    console.log('[postinstall] Frontend build already present.');
+    return 0;
+  }
+
+  console.log('[postinstall] Frontend build is missing; running npm run build.');
+  const result = spawnSync(
+    process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    ['run', 'build'],
+    { stdio: 'inherit', shell: false }
+  );
+
+  if (result.error || result.status !== 0) {
+    console.error(`[postinstall] Frontend build failed${result.error ? `: ${result.error.message}` : '.'}`);
+    return typeof result.status === 'number' ? result.status : 1;
+  }
+
+  writeBuildMarker();
+  console.log(`[postinstall] Frontend build passed for version ${packageJson.version}.`);
+  return 0;
+};
+
 const exitWithResult = (result, label) => {
   if (result.error) {
     console.error(`[postinstall] ${label} failed: ${result.error.message}`);
     process.exit(1);
   }
-  process.exit(typeof result.status === 'number' ? result.status : 1);
+  const installStatus = typeof result.status === 'number' ? result.status : 1;
+  if (installStatus !== 0) process.exit(installStatus);
+  process.exit(buildIfNeeded());
 };
 
 if (process.env.FIGRANIUM_SKIP_PLAYWRIGHT_INSTALL === '1') {
   console.log('[postinstall] Skipping Playwright install (FIGRANIUM_SKIP_PLAYWRIGHT_INSTALL=1).');
-  process.exit(0);
+  process.exit(buildIfNeeded());
 }
 
 if (process.env.VERCEL === '1') {
   console.log('[postinstall] Skipping Playwright install (VERCEL=1).');
-  process.exit(0);
+  process.exit(buildIfNeeded());
 }
 
 if (process.env.CI === '1') {
   console.log('[postinstall] Skipping Playwright install (CI=1).');
-  process.exit(0);
+  process.exit(buildIfNeeded());
 }
 
 if (process.env.PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD === '1') {
   console.log('[postinstall] Skipping Playwright download (PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1).');
-  process.exit(0);
+  process.exit(buildIfNeeded());
 }
 
 // CloakBrowser engine is opt-in; pre-fetch its stealth binary only when enabled.

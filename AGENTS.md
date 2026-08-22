@@ -28,6 +28,16 @@ Do not create a separate plan file unless explicitly asked. Post the plan in cha
 
 When a task includes bumping the version in `package.json`, AI agents must create or switch to a dedicated branch before making the version bump. Use a descriptive branch name with the repository's branch prefix, for example `codex/version-0.15.0`. Keep the version bump and its related changelog or release metadata changes on that branch; do not make version-bump commits directly on `main` unless the user explicitly requests it.
 
+For every version bump, the release must also be installable from GitHub. After updating `package.json` and the matching lockfile metadata:
+
+1. Run `npm run build` and relevant tests.
+2. Commit the version bump and release metadata on the version branch. Do not create a tag that points to an older commit or leaves the version bump uncommitted.
+3. Create an annotated tag matching the package version, using the `vX.Y.Z` format (for example, `v0.15.0`).
+4. Push both the version branch and the tag to `origin`.
+5. Verify the remote tag with `git ls-remote --tags origin vX.Y.Z` before giving users an install command.
+
+The corresponding GitHub installation command is `npm install github:RahulARanger/figranium#vX.Y.Z`. If unrelated uncommitted changes prevent a clean release commit, preserve them and ask the user to review or commit them before creating and pushing the release tag.
+
 ## Architecture
 
 **Request flow:** Frontend (React/Vite) → Express API (`server.js`) → execution engine (`scrape.js` for headless, `headful.js` for VNC browser sessions) → `src/agent/index.js` (orchestrator) → `src/agent/action-handler.js` (executes individual actions).
