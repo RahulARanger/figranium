@@ -120,13 +120,15 @@ server.tool(
         taskId: z.string().min(1),
         variables: z.record(z.string(), z.unknown()).optional(),
         url: z.string().url().optional(),
-        waitForCompletion: z.boolean().optional()
+        waitForCompletion: z.boolean().optional(),
+        headful: z.boolean().optional()
     },
-    async ({ taskId, variables, url, waitForCompletion }) => {
+    async ({ taskId, variables, url, waitForCompletion, headful }) => {
         try {
             const body = {};
             if (variables) body.variables = variables;
             if (url) body.url = url;
+            body.headless = headful !== true;
             const endpoint = waitForCompletion ? `/api/tasks/${encodeURIComponent(taskId)}/api` : `/api/tasks/${encodeURIComponent(taskId)}/run-async`;
             return result(await requestJson(endpoint, {
                 method: 'POST',

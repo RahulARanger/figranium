@@ -454,6 +454,7 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
         await updateExecution(runId, { status: 'started', durationMs: Date.now() - startedAt }).catch(() => {});
         sendExecutionUpdate(runId, { status: 'started', runId, taskId });
         try {
+            const headless = req.body?.headless !== false && String(req.body?.headless).toLowerCase() !== 'false';
             const result = await runFigranite({
                 ...task,
                 ...(req.body || {}),
@@ -463,7 +464,7 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
                 taskVariables: runtimeVars,
                 actions: task.actions || [],
                 mode: 'agent'
-            }, { localPort: port, protocol: req.protocol });
+            }, { localPort: port, protocol: req.protocol, headless });
             await updateExecution(runId, { status: 200, durationMs: Date.now() - startedAt, result });
             sendExecutionUpdate(runId, { status: 'completed', runId, taskId, result });
         } catch (error) {

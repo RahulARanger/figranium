@@ -690,7 +690,8 @@ async function handleAgent(req, res) {
     const data = (req.method === 'POST') ? req.body : req.query;
     const options = {
         localPort: req.socket && req.socket.localPort,
-        protocol: req.protocol
+        protocol: req.protocol,
+        headless: data.headless !== false && String(data.headless).toLowerCase() !== 'false'
     };
 
     try {

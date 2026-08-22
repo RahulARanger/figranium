@@ -356,7 +356,9 @@ The bundled MCP server exposes `create_task`, `update_task`, `browser_action`,
 `browser_inspect`, `browser_assert`, and `get_execution` in addition to task
 listing, inspection, execution, browser launch, and health tools. `run_task`
 returns an execution ID immediately by default; poll `get_execution` for the
-result, or set `waitForCompletion` to `true` for synchronous execution. Set
+result, or set `waitForCompletion` to `true` for synchronous execution. Runs
+are headless by default; set `headful` to `true` to run with a visible browser
+when a display is available. Set
 `FIGRANIUM_URL` and optionally `FIGRANIUM_API_KEY`, then run:
 
 ```bash
