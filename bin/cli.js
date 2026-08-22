@@ -3,6 +3,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const { loadEnvFile } = require('../src/server/load-env');
 
 // Load .env before changing into the installed package directory so `npx figranium`
@@ -41,6 +42,32 @@ function runHealthCheck() {
   console.log(`- Build: ${buildPassed ? `passed at ${marker.builtAt}` : 'not recorded as passed'}`);
   console.log(`- Build version: ${marker ? marker.packageVersion : 'unknown'}`);
   process.exitCode = healthy ? 0 : 1;
+}
+
+function openDashboard() {
+  if (process.env.FIGRANIUM_NO_OPEN === '1') return;
+
+  const port = Number(process.env.PORT) || 11345;
+  const url = `http://localhost:${port}`;
+  let command;
+  let args;
+
+  if (process.platform === 'darwin') {
+    command = 'open';
+    args = [url];
+  } else if (process.platform === 'win32') {
+    command = 'cmd';
+    args = ['/c', 'start', '', url];
+  } else {
+    command = 'xdg-open';
+    args = [url];
+  }
+
+  const browser = spawn(command, args, { detached: true, stdio: 'ignore' });
+  browser.on('error', () => {
+    console.warn(`[CLI] Could not open a browser automatically. Open ${url} manually.`);
+  });
+  browser.unref();
 }
 
 const args = process.argv.slice(2);
@@ -178,6 +205,7 @@ async function start() {
     // Default: Start the server
     if (flags.port) process.env.PORT = flags.port;
     require(path.join(rootDir, 'server.js'));
+    setTimeout(openDashboard, 500);
   }
 }
 

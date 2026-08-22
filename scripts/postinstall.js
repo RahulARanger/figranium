@@ -29,13 +29,7 @@ const buildIfNeeded = () => {
     return 0;
   }
 
-  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
-  if (fs.existsSync(distIndexPath)) {
-    console.log('[postinstall] Frontend build already present.');
-    return 0;
-  }
-
-  console.log('[postinstall] Frontend build is missing; running npm run build.');
+  console.log('[postinstall] Running frontend build.');
   const result = spawnSync(
     process.platform === 'win32' ? 'npm.cmd' : 'npm',
     ['run', 'build'],
