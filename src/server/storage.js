@@ -594,6 +594,13 @@ async function loadApiKey() {
             }
         }
 
+        // Deployment configuration is the final fallback when no stored key
+        // exists. This lets MCP and server-side API clients share FIGRANIUM_API_KEY
+        // without requiring the key to be written to local storage first.
+        if (!apiKey && typeof process.env.FIGRANIUM_API_KEY === 'string') {
+            apiKey = process.env.FIGRANIUM_API_KEY.trim() || null;
+        }
+
         if (apiKeyCache !== undefined) {
             apiKeyLoadPromise = null;
             return apiKeyCache;
