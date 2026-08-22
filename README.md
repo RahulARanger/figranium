@@ -350,6 +350,8 @@ If enabled, provide the `x-api-key` header or `Authorization: Bearer <key>`. For
 *   **`PATCH /api/tasks/:id`**: Update an existing task profile.
 *   **`POST /api/tasks/:id/api`**: Execute a predefined task. Pass `{"variables": {}}` in the body to override execution variables dynamically.
 
+In the editor, Agent Mode runs headlessly by default. Use the Headless/Headful toggle beside Run Task to launch a visible browser when a display is available.
+
 ### MCP task authoring
 
 The bundled MCP server exposes `create_task`, `update_task`, `browser_action`,

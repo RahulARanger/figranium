@@ -31,7 +31,7 @@ interface EditorScreenProps {
     setTriggerExpanded: Dispatch<SetStateAction<boolean>>;
     isExecuting: boolean;
     onSave: (task?: Task, createVersion?: boolean) => Promise<void>;
-    onRun: () => void;
+    onRun: (headful?: boolean) => void;
     results: Results | null;
     pinnedResults?: Results | null;
     onConfirm: (request: string | ConfirmRequest) => Promise<boolean>;
@@ -638,7 +638,8 @@ const EditorScreen: React.FC<EditorScreenProps> = ({
             <BottomActionBar
                 isExecuting={isExecuting}
                 isHeadfulOpen={isHeadfulOpen || false}
-                onRun={() => { setIsResultsOpen(true); onRun(); }}
+                canRunHeadful={currentTask.mode === 'agent'}
+                onRun={(headful) => { setIsResultsOpen(true); onRun(headful); }}
                 onStop={onStop}
                 onOpenHeadful={() => onOpenHeadful?.(currentTask.url || 'https://www.google.com', undefined, currentTask, currentTask.variables)}
                 onStopHeadful={onStopHeadful}

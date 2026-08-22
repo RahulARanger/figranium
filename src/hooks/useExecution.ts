@@ -64,7 +64,12 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
         setIsExecuting(false);
     };
 
-    const runTaskWithSnapshot = async (taskToRunRaw: Task | null, currentTask: Task | null, setCurrentTask: (t: Task) => void) => {
+    const runTaskWithSnapshot = async (
+        taskToRunRaw: Task | null,
+        currentTask: Task | null,
+        setCurrentTask: (t: Task) => void,
+        options: { headful?: boolean } = {},
+    ) => {
         if (!taskToRunRaw || !taskToRunRaw.url) return;
         const taskToRun = ensureActionIds(taskToRunRaw);
         if (currentTask && taskToRun !== currentTask) {
@@ -130,6 +135,12 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                 taskSnapshot: taskToRun,
                 runId
             };
+
+            // Agent runs are headless by default. The UI's explicit Headful
+            // choice maps to the same `headless: false` option used by MCP.
+            if (taskToRun.mode === 'agent') {
+                payload.headless = options.headful !== true;
+            }
 
             const executeTask = async (mode: 'scrape' | 'agent') => {
                 const controller = new AbortController();

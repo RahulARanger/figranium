@@ -286,7 +286,7 @@ export default function App() {
                                 setTriggerExpanded={setTriggerExpanded}
                                 isExecuting={isExecuting}
                                 onSave={handleSaveTask}
-                                onRun={() => runTaskWithSnapshot(currentTask, currentTask, setCurrentTask)}
+                                onRun={(headful) => runTaskWithSnapshot(currentTask, currentTask, setCurrentTask, { headful })}
                                 onRunSnapshot={(t) => runTaskWithSnapshot(t || currentTask, currentTask, setCurrentTask)}
                                 results={results}
                                 pinnedResults={pinnedResults}
@@ -318,7 +318,7 @@ export default function App() {
                                 setTriggerExpanded={setTriggerExpanded}
                                 isExecuting={isExecuting}
                                 onSave={handleSaveTask}
-                                onRun={() => runTaskWithSnapshot(currentTask, currentTask, setCurrentTask)}
+                                onRun={(headful) => runTaskWithSnapshot(currentTask, currentTask, setCurrentTask, { headful })}
                                 onRunSnapshot={(t) => runTaskWithSnapshot(t || currentTask, currentTask, setCurrentTask)}
                                 results={results}
                                 pinnedResults={pinnedResults}

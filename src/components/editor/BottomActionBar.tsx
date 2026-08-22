@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MaterialIcon from '../MaterialIcon';
 
 interface BottomActionBarProps {
     isExecuting: boolean;
     isHeadfulOpen: boolean;
-    onRun: () => void;
+    canRunHeadful?: boolean;
+    onRun: (headful: boolean) => void;
     onStop?: () => void;
     onOpenHeadful: () => void;
     onStopHeadful?: () => void;
@@ -13,15 +14,18 @@ interface BottomActionBarProps {
 const BottomActionBar: React.FC<BottomActionBarProps> = ({
     isExecuting,
     isHeadfulOpen,
+    canRunHeadful = false,
     onRun,
     onStop,
     onOpenHeadful,
     onStopHeadful,
 }) => {
+    const [runHeadful, setRunHeadful] = useState(false);
+
     return (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#111] border border-white/10 p-2 rounded-3xl shadow-2xl backdrop-blur-xl">
             <button
-                onClick={onRun}
+                onClick={() => onRun(runHeadful)}
                 disabled={isExecuting || isHeadfulOpen}
                 className="shine-effect bg-white text-black px-8 py-4 rounded-2xl font-bold text-xs tracking-[0.3em] uppercase transition-all shadow-xl shadow-white/5 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 title="Run Task (Ctrl + Enter)"
@@ -33,6 +37,20 @@ const BottomActionBar: React.FC<BottomActionBarProps> = ({
                 <span>
                     {isExecuting ? 'Running...' : 'Run Task'}
                 </span>
+            </button>
+            <button
+                type="button"
+                onClick={() => setRunHeadful((current) => !current)}
+                disabled={isExecuting || isHeadfulOpen || !canRunHeadful}
+                aria-pressed={runHeadful}
+                className={`px-4 h-12 rounded-2xl border text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed ${runHeadful
+                    ? 'border-blue-500/30 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                    : 'border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                    }`}
+                title={canRunHeadful ? `Run task ${runHeadful ? 'headful' : 'headless'}` : 'Headful runs are available for Agent Mode'}
+            >
+                <MaterialIcon name={runHeadful ? 'visibility' : 'visibility_off'} className="text-base" />
+                {runHeadful ? 'Headful' : 'Headless'}
             </button>
             {isExecuting && (
                 <button
