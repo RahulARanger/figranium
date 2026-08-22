@@ -3,17 +3,9 @@ import MaterialIcon from '../MaterialIcon';
 
 interface StoragePanelProps {
     onClearStorage: (type: 'screenshots' | 'cookies') => void;
-    workspacePath: string;
-    workspaceLoading: boolean;
-    workspaceSaving: boolean;
-    onSaveWorkspacePath: (path: string) => Promise<void>;
 }
 
-const StoragePanel: React.FC<StoragePanelProps> = ({ onClearStorage, workspacePath, workspaceLoading, workspaceSaving, onSaveWorkspacePath }) => {
-    const [draftPath, setDraftPath] = React.useState(workspacePath);
-
-    React.useEffect(() => setDraftPath(workspacePath), [workspacePath]);
-
+const StoragePanel: React.FC<StoragePanelProps> = ({ onClearStorage }) => {
     return (
         <div className="glass-card p-8 rounded-[40px] space-y-6">
             <div className="flex items-center gap-4 mb-2">
@@ -21,31 +13,6 @@ const StoragePanel: React.FC<StoragePanelProps> = ({ onClearStorage, workspacePa
                 <div>
                     <h3 className="text-sm font-bold text-white uppercase tracking-widest">Storage</h3>
                     <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">Manage stored data</p>
-                </div>
-            </div>
-            <div className="space-y-3">
-                <div>
-                    <h4 className="text-sm font-bold text-white uppercase tracking-widest">Task workspace</h4>
-                    <p className="text-xs text-gray-500 mt-1">All saved tasks and flows are loaded from this folder.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <input
-                        value={draftPath}
-                        onChange={e => setDraftPath(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') onSaveWorkspacePath(draftPath); }}
-                        disabled={workspaceLoading || workspaceSaving}
-                        aria-label="Task workspace path"
-                        placeholder="/path/to/task-workspace"
-                        className="flex-1 rounded-2xl theme-input border theme-border px-4 py-3 text-xs font-mono theme-text focus:outline-none focus:border-white disabled:opacity-50"
-                    />
-                    <button
-                        type="button"
-                        onClick={() => onSaveWorkspacePath(draftPath)}
-                        disabled={workspaceLoading || workspaceSaving || !draftPath.trim()}
-                        className="px-6 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest theme-accent-bg hover:bg-blue-400 transition-all disabled:opacity-50"
-                    >
-                        {workspaceLoading ? 'Loading…' : workspaceSaving ? 'Saving…' : 'Save path'}
-                    </button>
                 </div>
             </div>
             <div className="flex gap-4">

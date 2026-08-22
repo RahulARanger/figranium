@@ -185,6 +185,12 @@ function normalizeTaskWorkspacePath(value) {
 
 async function getTaskWorkspacePath() {
     if (taskWorkspacePathCache) return taskWorkspacePathCache;
+    // Environment configuration is authoritative for deployments. The legacy
+    // data/task_workspace.json file is only used when TASK_WORKSPACE_PATH is unset.
+    if (process.env.TASK_WORKSPACE_PATH) {
+        taskWorkspacePathCache = normalizeTaskWorkspacePath(process.env.TASK_WORKSPACE_PATH);
+        return taskWorkspacePathCache;
+    }
     try {
         const raw = await fs.promises.readFile(TASK_WORKSPACE_CONFIG_FILE, 'utf8');
         const configuredPath = JSON.parse(raw)?.path;
@@ -192,11 +198,7 @@ async function getTaskWorkspacePath() {
     } catch {
         // Fall through to the environment variable and default.
     }
-    if (!taskWorkspacePathCache) {
-        taskWorkspacePathCache = process.env.TASK_WORKSPACE_PATH
-            ? normalizeTaskWorkspacePath(process.env.TASK_WORKSPACE_PATH)
-            : DATA_DIR;
-    }
+    if (!taskWorkspacePathCache) taskWorkspacePathCache = DATA_DIR;
     return taskWorkspacePathCache;
 }
 

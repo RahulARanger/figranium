@@ -117,10 +117,10 @@ Then open `http://localhost:11345`. Persistent data is written to `data/`, and
 no database setup is needed. If a browser download was skipped during install,
 run `npx playwright install chromium` once before running browser tasks.
 
-Task and flow definitions are stored in `data/tasks.json` by default. The
-workspace can be changed from Settings → Storage; all task lists and saves then
-use `<workspace>/tasks.json`. For headless configuration, set
-`TASK_WORKSPACE_PATH` before starting the server.
+Task and flow definitions are stored in `data/tasks.json` by default. Configure
+an alternative workflow directory in `.env` with `TASK_WORKSPACE_PATH`; all task
+lists and saves then use `<workspace>/tasks.json`. The workflow directory is
+deployment configuration and is not editable from the Settings UI.
 
 Headless scrape and agent tasks work without any display server. Headful tasks
 work when the local machine has a desktop display. A headless Linux machine
@@ -276,7 +276,7 @@ Key capabilities of **Figranite** include:
 | `VITE_DEV_PORT` | Port for front-end dev server. | `5173` |
 | `VITE_BACKEND_PORT` | Backend port for proxying + scripts. | `11345` |
 | `DB_TYPE` | Optional database type overriding disk storage. Set to `postgres` to use PostgreSQL. | — |
-| `TASK_WORKSPACE_PATH` | Default folder for task and flow definitions when no Settings workspace has been saved. | `data/` |
+| `TASK_WORKSPACE_PATH` | Folder for task and flow definitions. Configure this in `.env`; it takes precedence over legacy workspace state. | `data/` |
 | `DB_POSTGRESDB_HOST` | Hostname for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `DB_POSTGRESDB_PORT` | Port for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `DB_POSTGRESDB_USER` | Username for the PostgreSQL database (required if DB_TYPE is postgres). | — |
