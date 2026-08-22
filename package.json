@@ -1,6 +1,6 @@
 {
   "name": "figranium",
-  "version": "0.15.14",
+  "version": "0.15.15",
   "main": "agent.js",
   "engines": {
     "node": ">=18"

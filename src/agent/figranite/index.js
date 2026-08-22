@@ -4,6 +4,7 @@ const { selectUserAgent } = require('../../../user-agent-settings');
 const { safeFormatHTML } = require('../../../html-utils');
 const { validateUrl } = require('../../../url-utils');
 const { parseBooleanFlag, sanitizeRunId, toCsvString } = require('../../../common-utils');
+const { buildWorkflowVariables } = require('../../server/workflow-variables');
 const { runExtractionScript } = require('../sandbox');
 const { cleanHtml } = require('../dom-utils');
 const { launchBrowser, createBrowserContext } = require('../browser');
@@ -62,7 +63,7 @@ async function runFigranite(data, options = {}) {
     let { url, actions, wait: globalWait, rotateUserAgents, rotateProxies, humanTyping, stealth = {}, sessionId } = data;
     const autoSolveCaptcha = parseBooleanFlag(data.autoSolveCaptcha);
 
-    const runtimeVars = { ...(data.taskVariables || data.variables || {}) };
+    const runtimeVars = buildWorkflowVariables(data.variables || {}, data.taskVariables || {});
     let lastBlockOutput = null;
     runtimeVars['block.output'] = lastBlockOutput;
 

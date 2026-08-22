@@ -8,6 +8,7 @@ const { loadTasks, saveTasks, getTaskById } = require('./storage');
 const { appendExecution } = require('./storage');
 const { getNextRun, scheduleToCron, isValidCron } = require('./cron-parser');
 const { sendExecutionUpdate } = require('./state');
+const { buildWorkflowVariables } = require('./workflow-variables');
 
 // Internal state
 let schedulerTimer = null;
@@ -199,12 +200,7 @@ async function executeScheduledTask(taskId) {
     const { handleScrape } = require('../../scrape');
 
     // Build runtime variables
-    const runtimeVars = {};
-    if (task.variables) {
-        for (const [key, v] of Object.entries(task.variables)) {
-            runtimeVars[key] = v.value;
-        }
-    }
+    const runtimeVars = buildWorkflowVariables(task.variables || {});
 
     // Construct mock request/response
     const body = {

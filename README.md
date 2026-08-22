@@ -357,6 +357,10 @@ If enabled, provide the `x-api-key` header or `Authorization: Bearer <key>`. For
 
 In the editor, Agent Mode runs headlessly by default. Use the Headless/Headful toggle beside Run Task to launch a visible browser when a display is available.
 
+### Workflow environment variables
+
+When the server starts, it loads `.env` from the directory where it was launched. Those values are available to every workflow through the existing `{$VARIABLE_NAME}` syntax, including Agent, Scrape, Headful, scheduled, API, UI, and MCP runs. Saved task variables override `.env` defaults, and variables supplied for an individual run override both. Environment values are used at runtime and are not saved into task definitions.
+
 ### MCP task authoring
 
 The bundled MCP server exposes `create_task`, `update_task`, `browser_action`,

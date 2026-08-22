@@ -7,6 +7,7 @@ const { selectUserAgent } = require('./user-agent-settings');
 const { formatHTML } = require('./html-utils');
 const { validateUrl } = require('./url-utils');
 const { toCsvString } = require('./common-utils');
+const { buildWorkflowVariables, resolveWorkflowValue } = require('./src/server/workflow-variables');
 
 const HEADFUL_STATE_PATH = path.join(__dirname, 'data', 'headful-storage-state.json');
 const USELESS_SELECTOR = 'script, style, svg, link, noscript';
@@ -111,13 +112,14 @@ async function runExtractionScript(script, html, pageUrl) {
 }
 
 async function runScrape(data) {
-    const url = data.url;
-    const customHeaders = data.headers || {};
-    const userSelector = data.selector;
+    const runtimeVars = buildWorkflowVariables(data.variables || {}, data.taskVariables || {});
+    const url = resolveWorkflowValue(data.url, runtimeVars);
+    const customHeaders = resolveWorkflowValue(data.headers || {}, runtimeVars);
+    const userSelector = resolveWorkflowValue(data.selector, runtimeVars);
     const rotateUserAgents = data.rotateUserAgents || false;
     const rotateProxiesRaw = data.rotateProxies;
     const rotateProxies = String(rotateProxiesRaw).toLowerCase() === 'true' || rotateProxiesRaw === true;
-    const extractionScript = data.extractionScript;
+    const extractionScript = resolveWorkflowValue(data.extractionScript, runtimeVars);
     const extractionFormat = data.extractionFormat === 'csv' ? 'csv' : 'json';
 
     if (!url) {

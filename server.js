@@ -89,6 +89,7 @@ const { pushOutput } = require('./src/server/outputProviders');
 const { migrateStorageState } = require('./src/server/migrate-storage');
 const { concurrencyGate } = require('./src/server/execution-queue');
 const { validateUrl } = require('./url-utils');
+const { buildWorkflowVariables, resolveWorkflowValue } = require('./src/server/workflow-variables');
 
 const app = express();
 app.disable('x-powered-by');
@@ -288,27 +289,17 @@ const registerExecution = (req, res, baseMeta = {}) => {
 
 const preprocessScrapeRequest = (req) => {
     const vars = req.body?.taskVariables || req.body?.variables || req.query?.taskVariables || req.query?.variables || {};
-    let safeVars = vars;
+    let parsedVars = vars;
     if (typeof vars === 'string') {
-        try { safeVars = JSON.parse(vars); } catch { }
-    } else if (typeof vars !== 'object') {
-        safeVars = {};
+        try { parsedVars = JSON.parse(vars); } catch { parsedVars = {}; }
     }
+    const safeVars = buildWorkflowVariables(parsedVars);
 
     const resolve = (str) => {
         if (typeof str !== 'string') return str;
         return str.replace(/\{\$([\w.]+)\}/g, (_match, name) => {
             if (name === 'now') return new Date().toISOString();
-            const value = safeVars[name];
-            if (value === undefined || value === null) return '';
-            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-                return String(value);
-            }
-            try {
-                return JSON.stringify(value);
-            } catch {
-                return String(value);
-            }
+            return resolveWorkflowValue(`{$${name}}`, safeVars);
         });
     };
 
@@ -362,7 +353,7 @@ const executeTaskById = async (req, res) => {
             taskVars[key] = v.value;
         }
     }
-    const runtimeVars = { ...taskVars, ...clientVars };
+    const runtimeVars = buildWorkflowVariables(taskVars, clientVars);
 
     req.body = {
         ...req.body,
@@ -427,7 +418,7 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
     for (const [key, value] of Object.entries(task.variables || {})) {
         taskVars[key] = value && typeof value === 'object' && 'value' in value ? value.value : value;
     }
-    const runtimeVars = { ...taskVars, ...clientVars };
+    const runtimeVars = buildWorkflowVariables(taskVars, clientVars);
     const startedAt = Date.now();
 
     try {
@@ -502,10 +493,7 @@ app.post('/headful', requireAuth, dataRateLimiter, concurrencyGate, (req, res) =
     if (req.body) {
         // Flatten variables from {type, value} objects to plain values
         const rawVars = req.body.taskVariables || req.body.variables || {};
-        const vars = {};
-        for (const [key, v] of Object.entries(rawVars)) {
-            vars[key] = (v && typeof v === 'object' && 'value' in v) ? v.value : v;
-        }
+        const vars = buildWorkflowVariables(rawVars);
         if (req.body.variables) req.body.variables = vars;
         if (req.body.taskVariables) req.body.taskVariables = vars;
         if (typeof req.body.url === 'string') {
