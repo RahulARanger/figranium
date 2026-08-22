@@ -20,6 +20,7 @@
     "preview": "vite preview",
     "prepare": "node scripts/prepare-build.js",
     "postinstall": "node scripts/postinstall.js",
+    "captcha:dev": "bash scripts/start-captcha-local.sh",
     "test": "npx -y vite-node tests/clipboard.test.ts"
   },
   "files": [
@@ -45,6 +46,8 @@
     "src/mcp/**/*.js",
     "extraction-worker.js",
     "start-vnc.sh",
+    "start-captcha.sh",
+    "entrypoint.sh",
     "scripts/postinstall.js",
     "scripts/prepare-build.js",
     "scripts/start-local.js",

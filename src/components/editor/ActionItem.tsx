@@ -50,6 +50,7 @@ const renderBlockMarker = (type: Action['type']) => {
     if (type === 'http_request') return <MaterialIcon name="language" className={`${iconClass} text-white`} />;
     if (type === 'wait_downloads') return <MaterialIcon name="download" className={`${iconClass} text-white`} />;
     if (type === 'get_content') return <MaterialIcon name="article" className={`${iconClass} text-white`} />;
+    if (type === 'solve_captcha') return <MaterialIcon name="verified_user" className={`${iconClass} text-white`} />;
     if (type === 'do_nothing') return <MaterialIcon name="block" className={`${iconClass} text-white/50`} />;
     return <span className="text-xs text-white/20">|</span>;
 };
@@ -77,6 +78,8 @@ interface ActionItemProps {
     onDeleteVariable?: (name: string) => void;
     isSelected?: boolean;
     selectorOptions?: string[];
+    autoOpenConfig?: boolean;
+    onCloseConfigModal?: () => void;
 }
 
 const ActionItem: React.FC<ActionItemProps> = React.memo(({
@@ -98,7 +101,9 @@ const ActionItem: React.FC<ActionItemProps> = React.memo(({
     onCreateVariable,
     onDeleteVariable,
     isSelected,
-    selectorOptions
+    selectorOptions,
+    autoOpenConfig,
+    onCloseConfigModal
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
@@ -127,6 +132,12 @@ const ActionItem: React.FC<ActionItemProps> = React.memo(({
 
     const summary = getActionSummary(action);
     const hasConfig = !NO_CONFIG_TYPES.includes(action.type);
+
+    useEffect(() => {
+        if (autoOpenConfig && hasConfig) {
+            setIsModalOpen(true);
+        }
+    }, [autoOpenConfig, hasConfig]);
 
     useEffect(() => {
         return () => {
@@ -224,7 +235,10 @@ const ActionItem: React.FC<ActionItemProps> = React.memo(({
                     selectorOptions={selectorOptions}
                     onUpdate={onUpdate}
                     onAutoSave={onAutoSave}
-                    onClose={() => setIsModalOpen(false)}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        onCloseConfigModal?.();
+                    }}
                     onStartInspect={onStartInspect}
                     onCreateVariable={onCreateVariable}
                     onDeleteVariable={onDeleteVariable}
