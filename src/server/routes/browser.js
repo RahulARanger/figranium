@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuthOrApiKey } = require('../middleware');
 const { launchApiSession, getActiveSession, ensureSessionId } = require('../../../headful');
+const { validateUrl } = require('../../../url-utils');
 
 const router = express.Router();
 
@@ -216,6 +217,152 @@ router.post('/browser/open', requireAuthOrApiKey, async (req, res) => {
             return res.status(409).json({ error: 'HEADFUL_DISPLAY_UNAVAILABLE', details: message });
         }
         res.status(500).json({ error: 'BROWSER_LAUNCH_FAILED', details: message });
+    }
+});
+
+function getManagedPage(req, res) {
+    const session = getActiveSession();
+    if (!session || session.status !== 'running' || !session.page) {
+        res.status(404).json({ error: 'NO_ACTIVE_SESSION', details: 'Launch a browser session first via /api/browser/open.' });
+        return null;
+    }
+
+    const activeId = ensureSessionId(session);
+    if (req.body?.sessionId && req.body.sessionId !== activeId) {
+        res.status(409).json({ error: 'SESSION_ID_MISMATCH', activeSessionId: activeId });
+        return null;
+    }
+    return { session, page: session.page, sessionId: activeId };
+}
+
+async function browserState(page) {
+    return {
+        url: page.url(),
+        title: await page.title().catch(() => ''),
+        text: await page.locator('body').innerText({ timeout: 3000 }).catch(() => '')
+    };
+}
+
+/**
+ * POST /api/browser/action
+ * Execute one safe interaction against the active managed browser page.
+ * Body: { sessionId?, action, url?, selector?, value?, key?, timeout? }
+ */
+router.post('/browser/action', requireAuthOrApiKey, async (req, res) => {
+    const managed = getManagedPage(req, res);
+    if (!managed) return;
+
+    const { page, sessionId } = managed;
+    const { action, url, selector, value, key, timeout = 15000 } = req.body || {};
+    const waitTimeout = Math.max(100, Math.min(Number(timeout) || 15000, 120000));
+
+    try {
+        let result;
+        switch (action) {
+            case 'navigate':
+                await validateUrl(url);
+                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: waitTimeout });
+                result = { url: page.url() };
+                break;
+            case 'click':
+                if (!selector) return res.status(400).json({ error: 'MISSING_SELECTOR' });
+                await page.waitForSelector(selector, { state: 'visible', timeout: waitTimeout });
+                await page.click(selector);
+                result = { clicked: selector };
+                break;
+            case 'type':
+            case 'fill':
+                if (!selector) return res.status(400).json({ error: 'MISSING_SELECTOR' });
+                await page.waitForSelector(selector, { state: 'visible', timeout: waitTimeout });
+                if (action === 'fill') await page.fill(selector, String(value ?? ''));
+                else await page.locator(selector).pressSequentially(String(value ?? ''));
+                result = { selector, value: String(value ?? '') };
+                break;
+            case 'press':
+                await page.keyboard.press(String(key || value || 'Enter'));
+                result = { key: String(key || value || 'Enter') };
+                break;
+            case 'refresh':
+                await page.reload({ waitUntil: 'domcontentloaded', timeout: waitTimeout });
+                result = { url: page.url() };
+                break;
+            case 'wait':
+                if (selector) await page.waitForSelector(selector, { state: 'visible', timeout: waitTimeout });
+                else await page.waitForTimeout(Math.min(Number(value) || 1000, 120000));
+                result = { waited: true };
+                break;
+            default:
+                return res.status(400).json({ error: 'UNSUPPORTED_BROWSER_ACTION', action });
+        }
+
+        res.json({ sessionId, action, result, state: await browserState(page) });
+    } catch (error) {
+        res.status(500).json({ error: 'BROWSER_ACTION_FAILED', action, details: String(error.message || error) });
+    }
+});
+
+/**
+ * POST /api/browser/inspect
+ * Return current page state and optionally selected element text/value.
+ */
+router.post('/browser/inspect', requireAuthOrApiKey, async (req, res) => {
+    const managed = getManagedPage(req, res);
+    if (!managed) return;
+
+    const { page, sessionId } = managed;
+    const { selector } = req.body || {};
+    try {
+        const state = await browserState(page);
+        if (selector) {
+            const locator = page.locator(selector).first();
+            state.element = {
+                exists: await locator.count() > 0,
+                visible: await locator.isVisible().catch(() => false),
+                text: await locator.innerText().catch(() => ''),
+                value: await locator.inputValue().catch(() => null)
+            };
+        }
+        res.json({ sessionId, state });
+    } catch (error) {
+        res.status(500).json({ error: 'BROWSER_INSPECT_FAILED', details: String(error.message || error) });
+    }
+});
+
+/**
+ * POST /api/browser/assert
+ * Verify URL, title, page text, or selector state.
+ */
+router.post('/browser/assert', requireAuthOrApiKey, async (req, res) => {
+    const managed = getManagedPage(req, res);
+    if (!managed) return;
+
+    const { page, sessionId } = managed;
+    const { kind, expected, selector, contains = true, timeout = 10000 } = req.body || {};
+    try {
+        const state = await browserState(page);
+        let actual;
+        let passed = false;
+        if (kind === 'url') actual = state.url;
+        else if (kind === 'title') actual = state.title;
+        else if (kind === 'text') actual = state.text;
+        else if (kind === 'selector') {
+            if (!selector) return res.status(400).json({ error: 'MISSING_SELECTOR' });
+            const locator = page.locator(selector).first();
+            await locator.waitFor({ state: 'attached', timeout: Math.min(Number(timeout) || 10000, 120000) }).catch(() => {});
+            actual = { exists: await locator.count() > 0, visible: await locator.isVisible().catch(() => false) };
+            passed = actual.exists && (!expected || expected === 'visible' ? actual.visible : true);
+        } else {
+            return res.status(400).json({ error: 'UNSUPPORTED_ASSERTION', kind });
+        }
+
+        if (kind !== 'selector') {
+            const actualText = String(actual ?? '');
+            const expectedText = String(expected ?? '');
+            passed = contains ? actualText.includes(expectedText) : actualText === expectedText;
+        }
+        res.status(passed ? 200 : 422).json({ sessionId, passed, kind, expected, actual, state });
+    } catch (error) {
+        res.status(500).json({ error: 'BROWSER_ASSERT_FAILED', details: String(error.message || error) });
     }
 });
 

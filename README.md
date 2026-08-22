@@ -352,8 +352,9 @@ If enabled, provide the `x-api-key` header or `Authorization: Bearer <key>`. For
 
 ### MCP task authoring
 
-The bundled MCP server exposes `create_task` and `update_task` in addition to
-task listing, inspection, execution, browser, and health tools. Set
+The bundled MCP server exposes `create_task`, `update_task`, `browser_action`,
+`browser_inspect`, and `browser_assert` in addition to task listing, inspection,
+execution, browser launch, and health tools. Set
 `FIGRANIUM_URL` and optionally `FIGRANIUM_API_KEY`, then run:
 
 ```bash

@@ -135,6 +135,72 @@ server.tool(
 );
 
 server.tool(
+    'browser_action',
+    'Perform one interaction in the active managed Figranium browser session.',
+    {
+        action: z.enum(['navigate', 'click', 'type', 'fill', 'press', 'refresh', 'wait']),
+        sessionId: z.string().optional(),
+        url: z.string().url().optional(),
+        selector: z.string().optional(),
+        value: z.string().optional(),
+        key: z.string().optional(),
+        timeout: z.number().int().positive().max(120000).optional()
+    },
+    async ({ action, sessionId, url, selector, value, key, timeout }) => {
+        try {
+            return result(await requestJson('/api/browser/action', {
+                method: 'POST',
+                body: { action, sessionId, url, selector, value, key, timeout }
+            }));
+        } catch (error) {
+            return result({ error: error.message });
+        }
+    }
+);
+
+server.tool(
+    'browser_inspect',
+    'Inspect the active managed browser page, optionally querying one selector.',
+    {
+        sessionId: z.string().optional(),
+        selector: z.string().optional()
+    },
+    async ({ sessionId, selector }) => {
+        try {
+            return result(await requestJson('/api/browser/inspect', {
+                method: 'POST',
+                body: { sessionId, selector }
+            }));
+        } catch (error) {
+            return result({ error: error.message });
+        }
+    }
+);
+
+server.tool(
+    'browser_assert',
+    'Assert the active managed browser URL, title, text, or selector visibility.',
+    {
+        kind: z.enum(['url', 'title', 'text', 'selector']),
+        expected: z.string().optional(),
+        selector: z.string().optional(),
+        contains: z.boolean().optional(),
+        timeout: z.number().int().positive().max(120000).optional(),
+        sessionId: z.string().optional()
+    },
+    async ({ kind, expected, selector, contains, timeout, sessionId }) => {
+        try {
+            return result(await requestJson('/api/browser/assert', {
+                method: 'POST',
+                body: { kind, expected, selector, contains, timeout, sessionId }
+            }));
+        } catch (error) {
+            return result({ error: error.message });
+        }
+    }
+);
+
+server.tool(
     'open_browser',
     'Open or reuse Figranium’s managed browser session and optionally navigate to a URL.',
     {
