@@ -39,7 +39,8 @@ const {
 
 const {
     loadTasks,
-    getTaskById
+    getTaskById,
+    appendExecution
 } = require('./src/server/storage');
 
 // Context & Utils
@@ -69,7 +70,7 @@ const {
 
 // Feature Modules (Legacy/Existing)
 const { handleScrape } = require('./scrape');
-const { handleAgent, setProgressReporter, setStopChecker } = require('./src/agent/figranite');
+const { handleAgent, runFigranite, setProgressReporter, setStopChecker } = require('./src/agent/figranite');
 const { handleHeadful, stopHeadful, toggleInspectMode, headfulEventEmitter } = require('./headful');
 
 // Routes
@@ -401,6 +402,76 @@ const executeTaskById = async (req, res) => {
 
 app.post('/tasks/:id/api', requireApiKey, dataRateLimiter, concurrencyGate, executeTaskById);
 app.post('/api/tasks/:id/api', requireApiKey, dataRateLimiter, concurrencyGate, executeTaskById);
+
+// MCP-friendly asynchronous execution endpoint. It acknowledges immediately
+// so long-running browser tasks do not depend on an HTTP client timeout.
+app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req, res) => {
+    const taskId = req.params.id;
+    await loadTasks();
+    const task = getTaskById(taskId);
+    if (!task) return res.status(404).json({ error: 'TASK_NOT_FOUND' });
+    if (task.mode && task.mode !== 'agent') {
+        return res.status(400).json({ error: 'ASYNC_AGENT_ONLY', details: 'Asynchronous MCP execution currently supports agent tasks.' });
+    }
+
+    const runId = `mcp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const clientVars = req.body?.variables || req.body?.taskVariables || {};
+    const taskVars = {};
+    for (const [key, value] of Object.entries(task.variables || {})) {
+        taskVars[key] = value && typeof value === 'object' && 'value' in value ? value.value : value;
+    }
+    const runtimeVars = { ...taskVars, ...clientVars };
+    const startedAt = Date.now();
+
+    res.status(202).json({ runId, executionId: runId, taskId, status: 'queued' });
+    setImmediate(async () => {
+        sendExecutionUpdate(runId, { status: 'started', runId, taskId });
+        try {
+            const result = await runFigranite({
+                ...task,
+                ...(req.body || {}),
+                taskId,
+                runId,
+                variables: runtimeVars,
+                taskVariables: runtimeVars,
+                actions: task.actions || [],
+                mode: 'agent'
+            }, { localPort: port, protocol: req.protocol });
+            await appendExecution({
+                id: runId,
+                timestamp: startedAt,
+                method: 'POST',
+                path: `/api/tasks/${taskId}/run-async`,
+                status: 200,
+                durationMs: Date.now() - startedAt,
+                source: 'mcp',
+                mode: 'agent',
+                taskId,
+                taskName: task.name || null,
+                url: task.url || null,
+                result
+            });
+            sendExecutionUpdate(runId, { status: 'completed', runId, taskId, result });
+        } catch (error) {
+            const failure = { error: 'Figranite Engine failed', details: error.message };
+            await appendExecution({
+                id: runId,
+                timestamp: startedAt,
+                method: 'POST',
+                path: `/api/tasks/${taskId}/run-async`,
+                status: 500,
+                durationMs: Date.now() - startedAt,
+                source: 'mcp',
+                mode: 'agent',
+                taskId,
+                taskName: task.name || null,
+                url: task.url || null,
+                result: failure
+            });
+            sendExecutionUpdate(runId, { status: 'failed', runId, taskId, ...failure });
+        }
+    });
+});
 
 app.all('/scrape', requireAuth, dataRateLimiter, concurrencyGate, (req, res) => {
     registerExecution(req, res, { mode: 'scrape' });

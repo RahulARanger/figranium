@@ -10,11 +10,13 @@ async function requestJson(path, options = {}) {
     if (apiKey) headers['x-api-key'] = apiKey;
     if (options.body !== undefined) headers['content-type'] = 'application/json';
 
+    const timeoutMs = Number(process.env.FIGRANIUM_MCP_TIMEOUT_MS || 0);
+    const requestOptions = { ...options, headers };
+    if (timeoutMs > 0) requestOptions.signal = AbortSignal.timeout(timeoutMs);
+
     const response = await fetch(`${baseUrl}${path}`, {
-        ...options,
-        headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        signal: AbortSignal.timeout(Number(process.env.FIGRANIUM_MCP_TIMEOUT_MS || 30000))
+        ...requestOptions,
+        body: options.body === undefined ? undefined : JSON.stringify(options.body)
     });
     const text = await response.text();
     let data;
@@ -113,21 +115,36 @@ server.tool(
 
 server.tool(
     'run_task',
-    'Run a saved Figranium task. Optional variables override task variables for this run.',
+    'Run a saved Figranium task asynchronously by default. Poll get_execution with the returned executionId. Set waitForCompletion=true only when a synchronous result is required.',
     {
         taskId: z.string().min(1),
         variables: z.record(z.string(), z.unknown()).optional(),
-        url: z.string().url().optional()
+        url: z.string().url().optional(),
+        waitForCompletion: z.boolean().optional()
     },
-    async ({ taskId, variables, url }) => {
+    async ({ taskId, variables, url, waitForCompletion }) => {
         try {
             const body = {};
             if (variables) body.variables = variables;
             if (url) body.url = url;
-            return result(await requestJson(`/api/tasks/${encodeURIComponent(taskId)}/api`, {
+            const endpoint = waitForCompletion ? `/api/tasks/${encodeURIComponent(taskId)}/api` : `/api/tasks/${encodeURIComponent(taskId)}/run-async`;
+            return result(await requestJson(endpoint, {
                 method: 'POST',
                 body
             }));
+        } catch (error) {
+            return result({ error: error.message });
+        }
+    }
+);
+
+server.tool(
+    'get_execution',
+    'Get the status and result of an asynchronous Figranium task execution.',
+    { executionId: z.string().min(1) },
+    async ({ executionId }) => {
+        try {
+            return result(await requestJson(`/api/executions/${encodeURIComponent(executionId)}`));
         } catch (error) {
             return result({ error: error.message });
         }
