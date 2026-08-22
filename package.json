@@ -1,6 +1,6 @@
 {
   "name": "figranium",
-  "version": "0.15.3",
+  "version": "0.15.4",
   "main": "agent.js",
   "engines": {
     "node": ">=18"
@@ -42,6 +42,7 @@
     "src/server/routes/schedules.js",
     "src/server/**/*.js",
     "src/agent/**/*.js",
+    "src/mcp/**/*.js",
     "extraction-worker.js",
     "start-vnc.sh",
     "scripts/postinstall.js",
@@ -83,7 +84,8 @@
     "react-window": "^1.8.8",
     "remark-gfm": "^4.0.1",
     "session-file-store": "^1.5.0",
-    "tree": "^0.1.3"
+    "tree": "^0.1.3",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
