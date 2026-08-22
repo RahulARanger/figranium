@@ -29,6 +29,21 @@ const buildIfNeeded = () => {
     return 0;
   }
 
+  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
+  if (fs.existsSync(distIndexPath)) {
+    writeBuildMarker();
+    console.log(`[postinstall] Frontend build is present for version ${packageJson.version}.`);
+    return 0;
+  }
+
+  const tscPath = path.join(process.cwd(), 'node_modules', 'typescript', 'bin', 'tsc');
+  const vitePath = path.join(process.cwd(), 'node_modules', 'vite', 'bin', 'vite.js');
+  if (!fs.existsSync(tscPath) || !fs.existsSync(vitePath)) {
+    console.error('[postinstall] Frontend build is missing and build tools are unavailable.');
+    console.error('[postinstall] GitHub installs should build during npm prepare; try reinstalling this package.');
+    return 1;
+  }
+
   console.log('[postinstall] Running frontend build.');
   const result = spawnSync(
     process.platform === 'win32' ? 'npm.cmd' : 'npm',

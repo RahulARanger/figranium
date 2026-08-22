@@ -1,6 +1,6 @@
 {
   "name": "figranium",
-  "version": "0.15.2",
+  "version": "0.15.3",
   "main": "agent.js",
   "engines": {
     "node": ">=18"
@@ -18,6 +18,7 @@
     "start": "node server.js",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "prepare": "node scripts/prepare-build.js",
     "postinstall": "node scripts/postinstall.js",
     "test": "npx -y vite-node tests/clipboard.test.ts"
   },
@@ -44,6 +45,7 @@
     "extraction-worker.js",
     "start-vnc.sh",
     "scripts/postinstall.js",
+    "scripts/prepare-build.js",
     "scripts/start-local.js",
     "README.md",
     "LICENSE",
