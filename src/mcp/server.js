@@ -56,6 +56,26 @@ server.tool('list_tasks', 'List available Figranium automation tasks.', {}, asyn
 });
 
 server.tool(
+    'create_task',
+    'Create and save a new Figranium automation task. The task object should follow AGENT_SPEC.md.',
+    {
+        task: z.record(z.string(), z.unknown()).refine((value) => Object.keys(value).length > 0, {
+            message: 'task must contain at least one field'
+        })
+    },
+    async ({ task }) => {
+        try {
+            return result(await requestJson('/api/tasks', {
+                method: 'POST',
+                body: task
+            }));
+        } catch (error) {
+            return result({ error: error.message });
+        }
+    }
+);
+
+server.tool(
     'get_task',
     'Get the saved definition of one Figranium task by ID.',
     { taskId: z.string().min(1) },
@@ -64,6 +84,27 @@ server.tool(
             const tasks = await requestJson('/api/tasks');
             const task = Array.isArray(tasks) ? tasks.find((item) => item.id === taskId) : null;
             return result(task || { error: 'TASK_NOT_FOUND', taskId });
+        } catch (error) {
+            return result({ error: error.message });
+        }
+    }
+);
+
+server.tool(
+    'update_task',
+    'Partially update an existing Figranium task. A version snapshot is created automatically.',
+    {
+        taskId: z.string().min(1),
+        updates: z.record(z.string(), z.unknown()).refine((value) => Object.keys(value).length > 0, {
+            message: 'updates must contain at least one field'
+        })
+    },
+    async ({ taskId, updates }) => {
+        try {
+            return result(await requestJson(`/api/tasks/${encodeURIComponent(taskId)}`, {
+                method: 'PATCH',
+                body: updates
+            }));
         } catch (error) {
             return result({ error: error.message });
         }

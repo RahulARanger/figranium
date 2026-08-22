@@ -347,8 +347,22 @@ If enabled, provide the `x-api-key` header or `Authorization: Bearer <key>`. For
 ### Task Management API
 *   **`GET /api/tasks`**: List all saved automation profiles.
 *   **`POST /api/tasks`**: Create a new task profile.
-*   **`PUT /api/tasks/:id`**: Update an existing task profile.
+*   **`PATCH /api/tasks/:id`**: Update an existing task profile.
 *   **`POST /api/tasks/:id/api`**: Execute a predefined task. Pass `{"variables": {}}` in the body to override execution variables dynamically.
+
+### MCP task authoring
+
+The bundled MCP server exposes `create_task` and `update_task` in addition to
+task listing, inspection, execution, browser, and health tools. Set
+`FIGRANIUM_URL` and optionally `FIGRANIUM_API_KEY`, then run:
+
+```bash
+npm run mcp
+```
+
+`create_task` accepts a task object conforming to `AGENT_SPEC.md`. `update_task`
+accepts a task ID and a partial update; the server creates a version snapshot
+before applying it.
 
 ### Scheduling API
 *   **`GET /api/schedules`**: List all scheduled tasks and their status.
