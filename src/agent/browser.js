@@ -123,7 +123,14 @@ async function createBrowserContext(launchOptions, options = {}) {
     }
 
     if (!disableRecording && recordingsDir) {
-        contextOptions.recordVideo = { dir: recordingsDir, size: viewport };
+        // Playwright rejects `size: null` when headful mode uses a null
+        // viewport. Omitting size lets Playwright use the browser's default
+        // recording dimensions while preserving the explicit size for
+        // headless runs.
+        contextOptions.recordVideo = {
+            dir: recordingsDir,
+            ...(viewport ? { size: viewport } : {})
+        };
     }
 
     let context;
