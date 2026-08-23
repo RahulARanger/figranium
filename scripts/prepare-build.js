@@ -11,7 +11,8 @@ if (process.env.FIGRANIUM_SKIP_BUILD === '1') {
 const result = spawnSync(
   process.platform === 'win32' ? 'npm.cmd' : 'npm',
   ['run', 'build'],
-  { stdio: 'inherit', shell: false }
+  // npm.cmd is a Windows command shim and must run through the shell.
+  { stdio: 'inherit', shell: process.platform === 'win32' }
 );
 
 if (result.error) {

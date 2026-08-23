@@ -11,7 +11,10 @@ const buildMarkerPath = path.join(process.cwd(), '.figranium-build.json');
 const runNpx = (args) => spawnSync(
   process.platform === 'win32' ? 'npx.cmd' : 'npx',
   args,
-  { stdio: 'inherit', shell: false }
+  // Windows exposes npx/npm as .cmd shims. Node cannot spawn those shims
+  // directly with shell disabled and reports EINVAL, especially when this
+  // script runs from npm's git-dependency preparation process.
+  { stdio: 'inherit', shell: process.platform === 'win32' }
 );
 
 const writeBuildMarker = () => {
@@ -48,7 +51,7 @@ const buildIfNeeded = () => {
   const result = spawnSync(
     process.platform === 'win32' ? 'npm.cmd' : 'npm',
     ['run', 'build'],
-    { stdio: 'inherit', shell: false }
+    { stdio: 'inherit', shell: process.platform === 'win32' }
   );
 
   if (result.error || result.status !== 0) {
