@@ -16,7 +16,6 @@ const {
     THEME_FILE,
     DEFAULT_THEME_ID,
     CAPTCHA_SETTINGS_FILE,
-    CAPTCHA_CLIENT_KEY_FILE,
     ALLOWED_IPS_FILE,
     STORAGE_STATE_PATH,
     MAX_EXECUTIONS,
@@ -1414,17 +1413,6 @@ async function saveCaptchaSettings(settings) {
     return payload;
 }
 
-// Reads the CLIENT_KEY that the bundled embedded ohmycaptcha instance auto-generates on
-// startup (see start-captcha.sh), used as the default when no override is configured.
-async function loadEmbeddedCaptchaClientKey() {
-    try {
-        const raw = await fs.promises.readFile(CAPTCHA_CLIENT_KEY_FILE, 'utf8');
-        return raw.trim() || null;
-    } catch {
-        return null;
-    }
-}
-
 module.exports = {
     loadUsers,
     saveUsers,
@@ -1460,6 +1448,5 @@ module.exports = {
     loadThemeConfig,
     saveThemeConfig,
     loadCaptchaSettings,
-    saveCaptchaSettings,
-    loadEmbeddedCaptchaClientKey
+    saveCaptchaSettings
 };
