@@ -1,6 +1,6 @@
 {
   "name": "figranium",
-  "version": "0.15.16",
+  "version": "0.15.17",
   "main": "agent.js",
   "engines": {
     "node": ">=18"
@@ -13,7 +13,7 @@
     "dev:ui": "vite",
     "dev:local": "node scripts/start-local.js",
     "server": "node server.js",
-    "mcp": "node src/mcp/server.js",
+    "mcp": "figranium-mcp",
     "cli": "node bin/cli.js",
     "start": "node server.js",
     "build": "tsc && vite build",
@@ -43,7 +43,6 @@
     "src/server/routes/schedules.js",
     "src/server/**/*.js",
     "src/agent/**/*.js",
-    "src/mcp/**/*.js",
     "extraction-worker.js",
     "start-vnc.sh",
     "start-captcha.sh",
@@ -63,7 +62,6 @@
   "license": "GPL-3.0-only",
   "description": "Figranium: Deterministic Control for an Agentic World",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "cloakbrowser": "^0.5.8",
@@ -72,6 +70,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "express-session": "^1.18.2",
+    "figranium-mcp": "^1.0.3",
     "got-scraping": "^4.2.1",
     "idcac-playwright": "^0.2.0",
     "jsdom": "^22.1.0",

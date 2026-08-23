@@ -363,22 +363,22 @@ When the server starts, it loads `.env` from the directory where it was launched
 
 ### MCP task authoring
 
-The bundled MCP server exposes `create_task`, `update_task`, `browser_action`,
-`browser_inspect`, `browser_assert`, and `get_execution` in addition to task
-listing, inspection, execution, browser launch, and health tools. `run_task`
-returns an execution ID immediately by default; poll `get_execution` for the
-result, or set `waitForCompletion` to `true` for synchronous execution. Runs
-are headless by default; set `headful` to `true` to run with a visible browser
-when a display is available. Set
-`FIGRANIUM_URL` and optionally `FIGRANIUM_API_KEY`, then run:
+Figranium exposes the official [`figranium-mcp`](https://github.com/figranium/figranium-mcp)
+server as an installed package dependency. It provides task creation, task
+updates, task listing and execution, browser launch and inspection, execution
+history, and schedule management through MCP. The package is launched through
+the Figranium wrapper script:
 
 ```bash
+FIGRANIUM_BASE_URL=http://127.0.0.1:11345 \
+FIGRANIUM_API_KEY=your_api_key \
 npm run mcp
 ```
 
-`create_task` accepts a task object conforming to `AGENT_SPEC.md`. `update_task`
-accepts a task ID and a partial update; the server creates a version snapshot
-before applying it.
+The official MCP package uses `FIGRANIUM_BASE_URL` (defaulting to
+`http://localhost:11345`) and requires `FIGRANIUM_API_KEY` at startup. See the
+[official MCP tool list](https://github.com/figranium/figranium-mcp#available-tools)
+for the current supported tools and schemas.
 
 ### Scheduling API
 *   **`GET /api/schedules`**: List all scheduled tasks and their status.
