@@ -174,6 +174,7 @@ export interface Results {
     html?: string;
     data?: any;
     screenshotUrl?: string;
+    screenshotVersion?: number;
     downloads?: { name: string; url: string; path: string }[];
     logs: string[];
     timestamp: string;

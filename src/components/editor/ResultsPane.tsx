@@ -343,9 +343,12 @@ const ResultsPane: React.FC<ResultsPaneProps> = ({ results, pinnedResults, isExe
         ? getResultsPreview(activeResults)
         : null, [activeResults?.data]);
     // ⚡ Bolt: Cache bust screenshotUrl only when the url itself changes, not when other activeResults fields (like logs) update
-    const screenshotSrc = useMemo(() => activeResults?.screenshotUrl
-        ? `${activeResults.screenshotUrl}${resultView === 'latest' ? `?t=${Date.now()}` : ''}`
-        : null, [activeResults?.screenshotUrl, resultView]);
+    const screenshotSrc = useMemo(() => {
+        if (!activeResults?.screenshotUrl) return null;
+        if (resultView !== 'latest') return activeResults.screenshotUrl;
+        const separator = activeResults.screenshotUrl.includes('?') ? '&' : '?';
+        return `${activeResults.screenshotUrl}${separator}t=${activeResults.screenshotVersion || Date.now()}`;
+    }, [activeResults?.screenshotUrl, activeResults?.screenshotVersion, resultView]);
     const renderCellValue = (value: any) => {
         const boolValue = normalizeBoolean(value);
         if (boolValue !== null) {

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Task, Results } from '../types';
 import { formatExecutionError, isDisplayUnavailable } from '../utils/executionUtils';
 import { ensureActionIds } from '../utils/taskUtils';
@@ -11,6 +11,44 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
     const [activeRunId, setActiveRunId] = useState<string | null>(null);
     const useNovnc = useHeadfulStatus();
     const executeAbortRef = useRef<AbortController | null>(null);
+
+    useEffect(() => {
+        if (!activeRunId) return;
+        const streamRunId = activeRunId;
+        const source = new EventSource(`/api/executions/stream?runId=${encodeURIComponent(streamRunId)}`, { withCredentials: true });
+
+        source.onmessage = (event) => {
+            if (!event.data) return;
+            try {
+                const payload = JSON.parse(event.data);
+                const result = payload?.result && typeof payload.result === 'object' ? payload.result : payload;
+                const isTerminal = payload?.status === 'completed' || payload?.status === 'failed';
+                setResults((previous) => {
+                    const base: Results = previous || { url: '', logs: [], timestamp: 'Running...' };
+                    const next = { ...base };
+                    if (Array.isArray(payload?.logs)) next.logs = payload.logs;
+                    else if (Array.isArray(result?.logs)) next.logs = result.logs;
+                    if (Object.prototype.hasOwnProperty.call(payload || {}, 'data')) next.data = payload.data;
+                    if (Object.prototype.hasOwnProperty.call(result || {}, 'data')) next.data = result.data;
+                    if (result?.html !== undefined) next.html = result.html;
+                    if (result?.final_url || result?.finalUrl) next.finalUrl = result.final_url || result.finalUrl;
+                    if (result?.downloads !== undefined) next.downloads = result.downloads;
+                    const screenshotUrl = payload?.screenshotUrl || payload?.screenshot_url || result?.screenshotUrl || result?.screenshot_url;
+                    if (screenshotUrl) next.screenshotUrl = screenshotUrl;
+                    if (payload?.screenshotVersion || result?.screenshotVersion) {
+                        next.screenshotVersion = payload.screenshotVersion || result.screenshotVersion;
+                    }
+                    if (isTerminal) next.timestamp = new Date().toLocaleTimeString();
+                    return next;
+                });
+                if (isTerminal) source.close();
+            } catch {
+                // Ignore malformed progress events; the final request remains authoritative.
+            }
+        };
+
+        return () => source.close();
+    }, [activeRunId]);
 
     const stopHeadful = async () => {
         try {
@@ -176,6 +214,7 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                 html: data.html,
                 data: data.data ?? data.html ?? null,
                 screenshotUrl: data.screenshot_url || data.screenshotUrl || undefined,
+                screenshotVersion: Date.now(),
                 downloads: data.downloads,
                 logs: data.logs || [],
                 timestamp: new Date().toLocaleTimeString(),
@@ -219,6 +258,7 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                         html: data.html,
                         data: data.data ?? data.html ?? null,
                         screenshotUrl: data.screenshot_url || data.screenshotUrl || undefined,
+                        screenshotVersion: Date.now(),
                         downloads: data.downloads,
                         logs: data.logs || [],
                         timestamp: new Date().toLocaleTimeString(),

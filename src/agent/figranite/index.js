@@ -15,6 +15,8 @@ const { evalStructuredCondition, evalCondition } = require('./logic-handler');
 const { executeAction } = require('./action-handler');
 const { solveCaptcha } = require('./captcha-client');
 
+const LIVE_DATA_MAX_CHARS = 120000;
+
 // Action types after which an auto-solve pass (task-level `autoSolveCaptcha`) checks for
 // a challenge — the points where navigation or a form interaction commonly triggers one.
 const AUTO_CAPTCHA_TRIGGER_TYPES = new Set(['navigate', 'goto', 'click', 'type', 'fill']);
@@ -253,6 +255,57 @@ async function runFigranite(data, options = {}) {
             return `/captures/${screenshotName}`;
         };
 
+        const liveScreenshotName = `${captureRunId}_live.png`;
+        let liveScreenshotUrl = null;
+        let liveScreenshotVersion = null;
+        let liveData;
+        const captureLiveScreenshot = async () => {
+            const capturesDir = await ensureCapturesDir();
+            const screenshotPath = path.join(capturesDir, liveScreenshotName);
+            const temporaryPath = path.join(capturesDir, `${liveScreenshotName}.${Date.now()}.png`);
+            await page.screenshot({ path: temporaryPath, fullPage: false });
+            await fs.promises.rename(temporaryPath, screenshotPath);
+            return `/captures/${liveScreenshotName}`;
+        };
+
+        const getLiveData = async () => {
+            if (lastBlockOutput !== null && lastBlockOutput !== undefined) return lastBlockOutput;
+            try {
+                const html = await page.content();
+                return html.length > LIVE_DATA_MAX_CHARS ? html.slice(0, LIVE_DATA_MAX_CHARS) : html;
+            } catch {
+                return undefined;
+            }
+        };
+
+        const reportActionProgress = (payload) => {
+            const snapshot = { ...payload, logs: logs.slice() };
+            if (liveScreenshotUrl) {
+                snapshot.screenshotUrl = liveScreenshotUrl;
+                snapshot.screenshotVersion = liveScreenshotVersion;
+            }
+            if (liveData !== undefined) snapshot.data = liveData;
+            reportProgress(runId, snapshot);
+        };
+
+        const publishLiveSnapshot = async (payload) => {
+            const snapshot = { ...payload, logs: logs.slice() };
+            try {
+                liveScreenshotUrl = await captureLiveScreenshot();
+                liveScreenshotVersion = Date.now();
+                snapshot.screenshotUrl = liveScreenshotUrl;
+                snapshot.screenshotVersion = liveScreenshotVersion;
+            } catch {
+                // A screenshot is helpful but should never interrupt the workflow.
+            }
+            const currentLiveData = await getLiveData();
+            if (currentLiveData !== undefined) {
+                liveData = currentLiveData;
+                snapshot.data = currentLiveData;
+            }
+            reportProgress(runId, snapshot);
+        };
+
         // ⚡ Bolt: Pre-calculate which actions need {$html} or loop.html to avoid repeated JSON.stringify (O(N) instead of O(N^2))
         const actionNeedsHtml = new Array(actions.length);
         const actionNeedsLoopHtml = new Array(actions.length);
@@ -349,7 +402,7 @@ async function runFigranite(data, options = {}) {
 
             if (act.disabled) {
                 logs.push(`SKIPPED disabled action: ${act.type}`);
-                reportProgress(runId, { actionId: act.id, status: 'skipped' });
+                reportActionProgress({ actionId: act.id, status: 'skipped' });
                 index += 1;
                 continue;
             }
@@ -522,22 +575,22 @@ async function runFigranite(data, options = {}) {
             if (stopRequested) break;
 
             try {
-                reportProgress(runId, { actionId: act.id, status: 'running' });
+                await publishLiveSnapshot({ actionId: act.id, status: 'running' });
                 const result = await executeAction(act, actionContext);
 
                 if (stopRequested) {
                     setBlockOutput(result);
-                    reportProgress(runId, { actionId: act.id, status: stopOutcome === 'error' ? 'error' : 'success' });
+                    await publishLiveSnapshot({ actionId: act.id, status: stopOutcome === 'error' ? 'error' : 'success' });
                     break;
                 }
 
                 if (result !== undefined) setBlockOutput(result);
-                reportProgress(runId, { actionId: act.id, status: 'success' });
+                await publishLiveSnapshot({ actionId: act.id, status: 'success' });
 
                 await maybeAutoSolveCaptcha({ enabled: autoSolveCaptcha, actionType: act.type, page, logs });
             } catch (err) {
                 logs.push(`FAILED action ${act.type}: ${err.message}`);
-                reportProgress(runId, { actionId: act.id, status: 'error' });
+                await publishLiveSnapshot({ actionId: act.id, status: 'error' });
                 if (errorHandler && !inErrorHandler) {
                     inErrorHandler = true;
                     index = errorHandler.start;

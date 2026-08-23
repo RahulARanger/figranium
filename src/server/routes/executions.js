@@ -1,7 +1,7 @@
 const express = require('express');
 const { requireAuth, requireApiKey, requireAuthOrApiKey } = require('../middleware');
 const { loadExecutions, saveExecutions, getExecutionById } = require('../storage');
-const { executionStreams, stopRequests, sendExecutionUpdate } = require('../state');
+const { executionStreams, getExecutionSnapshot, stopRequests, sendExecutionUpdate } = require('../state');
 
 const router = express.Router();
 
@@ -37,6 +37,11 @@ router.get('/stream', requireAuth, (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     if (typeof res.flushHeaders === 'function') res.flushHeaders();
     res.write('event: ready\ndata: {}\n\n');
+
+    const latestSnapshot = getExecutionSnapshot(runId);
+    if (latestSnapshot) {
+        res.write(`data: ${JSON.stringify(latestSnapshot)}\n\n`);
+    }
 
     let clients = executionStreams.get(runId);
     if (!clients) {

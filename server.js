@@ -261,6 +261,15 @@ const registerExecution = (req, res, baseMeta = {}) => {
         };
         appendExecution(entry).catch(err => console.error('Failed to append execution:', err));
 
+        const runId = String(body.runId || req.query.runId || '').trim();
+        if (runId) {
+            sendExecutionUpdate(runId, {
+                status: entry.status >= 200 && entry.status < 300 ? 'completed' : 'failed',
+                runId,
+                result: entry.result
+            });
+        }
+
         const outputConfig = body.output || (body.taskSnapshot && body.taskSnapshot.output);
         if (outputConfig && entry.result) {
             pushOutput(outputConfig, entry.result.data, requestId)
