@@ -71,7 +71,8 @@ const {
 
 // Feature Modules (Legacy/Existing)
 const { handleScrape } = require('./scrape');
-const { handleAgent, runFigranite, setProgressReporter, setStopChecker } = require('./src/agent/figranite');
+const { handleAgent, setProgressReporter, setStopChecker, setStopCleaner } = require('./src/agent/figranite');
+const { normalizeTaskOutcome } = require('./src/agent/outcomes');
 const { handleHeadful, stopHeadful, toggleInspectMode, headfulEventEmitter } = require('./headful');
 
 // Routes
@@ -141,6 +142,7 @@ setStopChecker((runId) => {
     }
     return false;
 });
+setStopCleaner((runId) => stopRequests.delete(runId));
 
 // App Middleware
 app.use(requireIpAllowlist);
@@ -251,13 +253,16 @@ const registerExecution = (req, res, baseMeta = {}) => {
             path: req.path,
             status: res.statusCode,
             durationMs,
-            source: body.runSource || req.query.runSource || baseMeta.source || 'unknown',
+            source: body.runSource || req.query.runSource || baseMeta.source || 'api',
             mode: body.mode || baseMeta.mode || 'unknown',
             taskId: body.taskId || baseMeta.taskId || null,
             taskName: body.name || baseMeta.taskName || null,
             url: body.url || req.query.url || null,
             taskSnapshot: body.taskSnapshot || null,
-            result: res.locals.executionResult || null
+            result: res.locals.executionResult || null,
+            outcome: res.locals.executionResult?.outcome
+                ? normalizeTaskOutcome(res.locals.executionResult.outcome)
+                : undefined
         };
         appendExecution(entry).catch(err => console.error('Failed to append execution:', err));
 
@@ -271,7 +276,7 @@ const registerExecution = (req, res, baseMeta = {}) => {
         }
 
         const outputConfig = body.output || (body.taskSnapshot && body.taskSnapshot.output);
-        if (outputConfig && entry.result) {
+        if (outputConfig && entry.result && entry.result.data !== undefined) {
             pushOutput(outputConfig, entry.result.data, requestId)
                 .catch(err => console.error('[OUTPUT] Unexpected error:', err));
         }
@@ -283,6 +288,7 @@ const registerExecution = (req, res, baseMeta = {}) => {
                 executionId: entry.id,
                 taskId: entry.taskId,
                 status: entry.status,
+                outcome: entry.outcome,
                 durationMs: entry.durationMs,
                 result: entry.result
             });
@@ -390,14 +396,6 @@ const executeTaskById = async (req, res) => {
         }
         return handleHeadful(req, res);
     } else {
-        try {
-            const runId = String((req.body && req.body.runId) || req.query.runId || '').trim();
-            if (runId) {
-                sendExecutionUpdate(runId, { status: 'started' });
-            }
-        } catch {
-            // ignore
-        }
         return handleAgent(req, res);
     }
 };
@@ -489,14 +487,6 @@ app.all('/scraper', requireAuth, dataRateLimiter, concurrencyGate, (req, res) =>
 });
 app.all('/agent', requireAuth, dataRateLimiter, concurrencyGate, (req, res) => {
     registerExecution(req, res, { mode: 'agent' });
-    try {
-        const runId = String((req.body && req.body.runId) || req.query.runId || '').trim();
-        if (runId) {
-            sendExecutionUpdate(runId, { status: 'started' });
-        }
-    } catch {
-        // ignore
-    }
     return handleAgent(req, res);
 });
 app.post('/headful', requireAuth, dataRateLimiter, concurrencyGate, (req, res) => {

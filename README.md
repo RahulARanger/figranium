@@ -7,7 +7,7 @@
 Figranium is an open-source, self-hosted alternative to Apify and SaaS cloud scrapers, built to turn browser workflows into instant API endpoints for developers, API pipelines, and low-code tools like n8n and Activepieces. Powered by a React/Vite control plane and an Express/Playwright runtime, it lets you visually build stealth browser tasks, pass dynamic variables during runtime, handle automatic proxy rotation, and stream structured results or CSV exports on your own infrastructure—delivering the instant API convenience of cloud actors without usage credits, rate caps, or third-party data hosting.
 
 <div align="center">
-  <img src="demo.gif" alt="Figranium Demo" width="100%">
+  <img src="screenshot.png" alt="Figranium Demo" width="100%">
   <p align="center">
     <i>Watch a video walkthrough of Figranium usage: <b><a href="demo.webm">demo.webm</a></b> or <b><a href="demo.mp4">demo.mp4</a></b></i>
   </p>
@@ -294,11 +294,11 @@ Key capabilities of **Figranite** include:
 | `CAPTCHA_REMOTE_FORWARD_CONTEXT` | Opt in to sending origin-scoped cookies, locale, timezone, viewport, and user agent to a custom endpoint advertising `browserContext` version 1. | `false` |
 | `CAPTCHA_REMOTE_TIMEOUT_MS` | Maximum time allocated to the remote route before local fallback. | action deadline minus local reserve |
 | `CAPTCHA_LOCAL_FALLBACK_MIN_MS` | Portion of the action deadline reserved for the active-browser local route. | `15000` |
+| `CAPTCHA_AUTO_DETECT_TIMEOUT_MS` | Maximum readiness-detection wait after each auto-solve trigger when no CAPTCHA is present. | `5000` |
 | `CAPTCHA_COMPANION_URL` | Optional Apple companion URL. Docker Desktop discovers `http://host.docker.internal:11438`; native macOS uses loopback. | auto-detected |
 | `CAPTCHA_COMPANION_TOKEN` | Bearer token for the Apple companion. If omitted, `data/captcha-companion-token` is used. | generated file |
 | `CAPTCHA_OWLVIT_THRESHOLD` / `CAPTCHA_FLORENCE2_THRESHOLD` | Optional tier-specific confidence overrides in the range 0–1. | calibrated `0.12` / `0.18` |
 | `RUN_CAPTCHA_LIVE_TESTS` | Set to `1` to enable network/model/browser acceptance tests. Ordinary tests never download weights. | disabled |
-| `OHMYCAPTCHA_URL` / `OHMYCAPTCHA_CLIENT_KEY` | Deprecated aliases for the new remote endpoint variables. | — |
 
 Local weights are fetched on first use/startup into persistent `data/captcha-model/`; no model weights or secondary browser are included in the Docker image. Every fetched file is pinned to an exact upstream commit, size, and SHA-256 digest, and inference loads with remote access disabled. OWL-ViT uses about 159 MB of artifacts on 2–7.99 GiB hosts; Florence-2 uses about 361 MB at 8 GiB+. Hosts below 2 GiB can still use a configured remote endpoint. At steady state only the active tier is retained.
 
@@ -487,8 +487,8 @@ Figranium includes a built-in scheduler that handles automated task execution wi
 
 # Roadmap
 
-- [x] **Settings shortcuts** — the System tab already exposes API key regeneration, user agent selection, and layout preferences so operators can tune them without leaving the UI.
-- [x] **Storage cleanup** — the Settings data tab lets you clear captures and cookies, and the backend exposes `/api/clear-screenshots` and `/api/clear-cookies`.
+- [x] **Settings shortcuts** — dedicated API Keys, User Agent, Proxies, and Appearance sections let operators tune core settings without leaving the UI.
+- [x] **Storage cleanup** — the standalone Captures page lets you review and clear captured media, while the backend exposes `/api/clear-screenshots` and `/api/clear-cookies` for storage maintenance.
 - [x] **IP rotation tooling** — build a settings workflow for importing proxies and automatically rotating them.
 - [x] **API key workflow** — the API key panel already supports regenerating and copying keys via `/api/settings/api-key`, so secure API access is ready without extra setup.
 - [x] **Task proxy rotation toggle** — the “Rotate Proxies” option in each task ties into the Settings rotation controls, enabling rotation per execution.
@@ -497,9 +497,10 @@ Figranium includes a built-in scheduler that handles automated task execution wi
 - [ ] **Click-and-drag block** — add an action that does drag gestures (selecting text, moving items) so tasks can simulate click-and-drag flows.
 - [x] **Recording controls** — Task editor now exposes a “Disable automated recording” switch in the general settings panel so workflows can skip video capture on a per-task basis.
 - [x] **File downloads** — add explicit support for agent tasks to download files (PDFs, CSVs, etc.) directly from target pages, then surface those downloads in the UI so users can preview or export them without sifting through captures.
+- [ ] **Per-automation file workspace** — give every automation its own downloads folder and add an upload block that can select a file from that folder and upload it through a page's file input.
 - [x] **Stateless mode** — Tasks now have a “Stateless execution” toggle alongside the recording controls so each run starts with no cookies or local storage, ensuring nothing persists between executions for that workflow.
 - [ ] **Adblocking filters** — add controls so execution contexts can enable built-in ad/malware filtering (e.g., via hosts file overrides or request blocking) to reduce noise on sensitive sites.
-- [ ] **Extraction response mode** — add a Settings switch so users can choose whether the API returns HTML+data (for debugging) or data-only payloads when extraction scripts run.
+- [x] **Extraction response mode** — add a Settings switch so users can choose whether the API returns HTML+data (for debugging) or data-only payloads when extraction scripts run.
 - [ ] **Folder organization** — group tasks, assets, and captures into named folders so operators can browse, filter, and download collections per workflow.
 - [ ] **Stable capture retention** — add filtering, pinning, and archiving in captures tab so teams can keep compliance records.
 - [ ] **Workspace templates** — allow saving and sharing workspace presets (layout + default proxies/agents) so new team members can onboard with pre-configured setups.

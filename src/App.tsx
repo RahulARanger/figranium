@@ -23,7 +23,7 @@ import { useTasks } from './hooks/useTasks';
 import { useExecution } from './hooks/useExecution';
 import { useUI } from './hooks/useUI';
 import { useTheme } from './hooks/useTheme';
-import { serializeTaskSnapshot, formatLabel } from './utils/taskUtils';
+import { serializeTaskSnapshot } from './utils/taskUtils';
 
 export default function App() {
     const navigate = useNavigate();
@@ -56,6 +56,7 @@ export default function App() {
     // Execution Hook
     const {
         isExecuting,
+        isStopping,
         isHeadfulOpen,
         results,
         setResults,
@@ -115,6 +116,7 @@ export default function App() {
 
     useEffect(() => {
         if (location.pathname === '/tasks/new' && !currentTask) {
+            setTriggerExpanded(true);
             createNewTask(setResults, setHasUnsavedChanges);
         }
     }, [location.pathname]);
@@ -158,13 +160,6 @@ export default function App() {
         });
     };
 
-    const clearStorage = async (type: 'screenshots' | 'cookies') => {
-        if (!await requestConfirm(`Delete all ${type}?`)) return;
-        const endpoint = type === 'screenshots' ? '/api/clear-screenshots' : '/api/clear-cookies';
-        await fetch(endpoint, { method: 'POST' });
-        showAlert(`${formatLabel(type)} cleared.`, 'success');
-    };
-
     const getCurrentScreen = () => {
         if (location.pathname.startsWith('/tasks')) return 'editor';
         if (location.pathname === '/settings') return 'settings';
@@ -185,7 +180,7 @@ export default function App() {
     }, [navigate]);
 
     const handleNewTask = useCallback(() => {
-        setTriggerExpanded(false);
+        setTriggerExpanded(true);
         createNewTask(setResults, setHasUnsavedChanges);
     }, [createNewTask, setResults, setHasUnsavedChanges]);
 
@@ -285,6 +280,7 @@ export default function App() {
                                 triggerExpanded={triggerExpanded}
                                 setTriggerExpanded={setTriggerExpanded}
                                 isExecuting={isExecuting}
+                                isStopping={isStopping}
                                 onSave={handleSaveTask}
                                 onRun={(headful) => runTaskWithSnapshot(currentTask, currentTask, setCurrentTask, { headful })}
                                 onRunSnapshot={(t) => runTaskWithSnapshot(t || currentTask, currentTask, setCurrentTask)}
@@ -317,6 +313,7 @@ export default function App() {
                                 triggerExpanded={triggerExpanded}
                                 setTriggerExpanded={setTriggerExpanded}
                                 isExecuting={isExecuting}
+                                isStopping={isStopping}
                                 onSave={handleSaveTask}
                                 onRun={(headful) => runTaskWithSnapshot(currentTask, currentTask, setCurrentTask, { headful })}
                                 onRunSnapshot={(t) => runTaskWithSnapshot(t || currentTask, currentTask, setCurrentTask)}
@@ -338,7 +335,6 @@ export default function App() {
                     />
                     <Route path="/settings" element={
                         <SettingsScreen
-                            onClearStorage={clearStorage}
                             onConfirm={requestConfirm}
                             onNotify={showAlert}
                         />

@@ -1,10 +1,7 @@
 {
   "name": "figranium",
-  "version": "0.15.19",
-  "main": "agent.js",
-  "engines": {
-    "node": ">=18"
-  },
+  "version": "0.16.0",
+  "main": "index.js",
   "bin": {
     "figranium": "bin/cli.js"
   },

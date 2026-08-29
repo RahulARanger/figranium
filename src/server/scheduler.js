@@ -9,6 +9,7 @@ const { appendExecution } = require('./storage');
 const { getNextRun, scheduleToCron, isValidCron } = require('./cron-parser');
 const { sendExecutionUpdate } = require('./state');
 const { buildWorkflowVariables } = require('./workflow-variables');
+const { normalizeTaskOutcome } = require('../agent/outcomes');
 
 // Internal state
 let schedulerTimer = null;
@@ -113,11 +114,14 @@ async function tick(taskId) {
     const startTime = Date.now();
     let status = 'success';
     let result = null;
+    let requestFailed = false;
 
     try {
         result = await executeScheduledTask(taskId);
+        status = normalizeTaskOutcome(result?.outcome, 'success');
     } catch (err) {
         status = 'error';
+        requestFailed = true;
         console.error(`[SCHEDULER] Task "${taskId}" failed:`, err.message);
         result = { error: err.message };
     }
@@ -158,7 +162,8 @@ async function tick(taskId) {
             timestamp: startTime,
             method: 'POST',
             path: `/api/tasks/${taskId}/api`,
-            status: status === 'success' ? 200 : 500,
+            status: requestFailed ? 500 : 200,
+            outcome: status,
             durationMs,
             source: 'scheduler',
             mode: 'unknown',
@@ -196,7 +201,7 @@ async function executeScheduledTask(taskId) {
     if (!task) throw new Error('Task not found: ' + taskId);
 
     // Lazy-require to avoid circular deps
-    const { handleAgent } = require('../../agent/figranite');
+    const { handleAgent } = require('../../agent');
     const { handleScrape } = require('../../scrape');
 
     // Build runtime variables
@@ -247,10 +252,6 @@ async function executeScheduledTask(taskId) {
         mockReq.body.runId = runId;
 
         const handler = task.mode === 'scrape' ? handleScrape : handleAgent;
-
-        try {
-            sendExecutionUpdate(runId, { status: 'started' });
-        } catch { }
 
         Promise.resolve(handler(mockReq, mockRes)).catch(reject);
     });
