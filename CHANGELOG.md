@@ -42,6 +42,94 @@
 - Prevented unauthenticated application startup from attempting to fetch Tasks before a session is available.
 - Removed the dark background highlight behind block names in the editor canvas.
 
+## [0.15.19] - 2026-08-24
+
+### Windows compatibility
+- Fixed Windows installer compatibility and published the corresponding release metadata.
+
+## [0.15.18] - 2026-08-24
+
+### CAPTCHA routing
+- Replaced the embedded CAPTCHA solver path with adaptive verified local/remote routing and added companion support, then published the release metadata.
+
+## [0.15.17] - 2026-08-23
+
+### Execution streaming
+- Added live execution screenshots, logs, and data streaming to the dashboard and updated the MCP integration.
+
+## [0.15.16] - 2026-08-23
+
+### Environment configuration
+- Allowed launch-environment values to override workflow defaults and published the release metadata.
+
+## [0.15.15] - 2026-08-23
+
+### Environment configuration
+- Mapped launch-directory environment variables into workflows and published the release metadata.
+
+## [0.15.14] - 2026-08-23
+
+### CAPTCHA and editor improvements
+- Updated release package metadata, merged the CAPTCHA changes, documented the reCAPTCHA audio fallback requirements, raised the default CAPTCHA solve timeout, and marked the earlier CAPTCHA path as broken pending investigation.
+- Added automatic opening of the action configuration modal when a new action block is created.
+- Fixed the embedded CAPTCHA service to use the app port, skipped it on hosts under the 2 GiB memory guard, reduced its bundled checkout to runtime content, and prevented its Playwright install from deleting the app's Chromium build.
+- Expanded the prior CAPTCHA release documentation to cover the complete change range.
+
+## [0.15.13] - 2026-08-23
+
+### Headful execution
+- Fixed headful recording launch behavior and published the release metadata.
+
+## [0.15.12] - 2026-08-23
+
+### Headful execution
+- Added the UI headful execution toggle and published the release metadata.
+
+## [0.15.11] - 2026-08-23
+
+### MCP execution
+- Added the MCP headful task execution option.
+
+## [0.15.10] - 2026-08-23
+
+### MCP execution
+- Persisted asynchronous execution state and failures.
+
+## [0.15.9] - 2026-08-23
+
+### MCP execution
+- Changed MCP task execution to asynchronous by default.
+
+## [0.15.8] - 2026-08-23
+
+### Authentication
+- Added launch-environment API-key fallback for server authentication.
+
+## [0.15.7] - 2026-08-23
+
+### Workflow configuration
+- Configured the workflow workspace through environment settings only.
+
+## [0.15.6] - 2026-08-23
+
+### MCP tools
+- Added MCP browser interaction and assertion tools.
+
+## [0.15.5] - 2026-08-22
+
+### MCP tools
+- Exposed MCP task creation and update tools.
+
+## [0.15.4] - 2026-08-22
+
+### Packaging
+- Included the MCP server in the GitHub package.
+
+## [0.15.3] - 2026-08-22
+
+### Packaging
+- Added GitHub installation builds to the npm prepare workflow.
+
 ## [0.15.2] - 2026-08-28
 
 ### Bug fixes
