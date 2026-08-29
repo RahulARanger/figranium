@@ -1,4 +1,4 @@
-import { TaskOutcome } from '../types';
+import { TaskOutcome, WorkflowStatusMode } from '../types';
 
 export const normalizeTaskOutcome = (outcome?: string, httpStatus?: number): TaskOutcome => {
     if (outcome === 'success' || outcome === 'error' || outcome === 'stopped' || outcome === 'crashed' || outcome === 'anti_bot') {
@@ -7,9 +7,16 @@ export const normalizeTaskOutcome = (outcome?: string, httpStatus?: number): Tas
     return httpStatus !== undefined && (httpStatus < 200 || httpStatus >= 300) ? 'error' : 'success';
 };
 
-export const taskOutcomeLabel = (outcome: TaskOutcome) => outcome === 'anti_bot'
-    ? 'Anti-bot'
-    : `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}`;
+export const taskOutcomeLabel = (outcome: TaskOutcome, statusOfWorkflow?: WorkflowStatusMode) => {
+    if (statusOfWorkflow === 'testBased') {
+        if (outcome === 'success') return 'Finished - Success';
+        if (outcome === 'error') return 'Failed';
+        if (outcome === 'stopped') return 'Stopped';
+    }
+    return outcome === 'anti_bot'
+        ? 'Anti-bot'
+        : `${outcome.charAt(0).toUpperCase()}${outcome.slice(1)}`;
+};
 
 export const taskOutcomeBadgeClass = (outcome: TaskOutcome) => {
     if (outcome === 'success') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';

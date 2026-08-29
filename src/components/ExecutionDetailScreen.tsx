@@ -22,7 +22,8 @@ const toResults = (exec: Execution): Results | null => {
         screenshotUrl: result.screenshot_url || result.screenshotUrl,
         logs: result.logs || [],
         timestamp: new Date(exec.timestamp).toLocaleTimeString(),
-        outcome: normalizeTaskOutcome(exec.outcome || result.outcome, exec.status)
+        outcome: normalizeTaskOutcome(exec.outcome || result.outcome, exec.status),
+        statusOfWorkflow: exec.statusOfWorkflow
     };
 };
 
@@ -104,7 +105,7 @@ const ExecutionDetailScreen: React.FC<ExecutionDetailScreenProps> = ({ onConfirm
 
                 <section className="app-panel grid grid-cols-5 mb-6 max-lg:grid-cols-2 overflow-hidden">
                     {[
-                        ['Outcome', taskOutcomeLabel(outcome)],
+                        ['Outcome', taskOutcomeLabel(outcome, execution.statusOfWorkflow)],
                         ['Started', new Date(execution.timestamp).toLocaleString()],
                         ['Source', execution.source],
                         ['Mode', execution.mode],

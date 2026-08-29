@@ -549,7 +549,7 @@ const ResultsPane: React.FC<ResultsPaneProps> = ({ results, pinnedResults, isExe
                         ? 'bg-blue-500/10 text-blue-400 border-blue-500/20 animate-pulse'
                         : taskOutcomeBadgeClass(normalizeTaskOutcome(activeResults?.outcome))
                     }`}>
-                    {resultView === 'pinned' ? 'Pinned' : (isExecuting ? 'Running' : taskOutcomeLabel(normalizeTaskOutcome(activeResults?.outcome)))}
+                    {resultView === 'pinned' ? 'Pinned' : (isExecuting ? 'Running' : taskOutcomeLabel(normalizeTaskOutcome(activeResults?.outcome), activeResults?.statusOfWorkflow))}
                 </div>
             </div>
 

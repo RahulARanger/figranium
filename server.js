@@ -55,6 +55,7 @@ const {
     proxyWebsockify,
     isPortAvailable
 } = require('./src/server/utils');
+const { PROMOTED_CAPTURE_DIRS } = require('./src/server/capture-config');
 const { isValidWebSocketOrigin, fetchWithRedirectValidation } = require('./url-utils');
 
 // Middleware
@@ -262,7 +263,8 @@ const registerExecution = (req, res, baseMeta = {}) => {
             result: res.locals.executionResult || null,
             outcome: res.locals.executionResult?.outcome
                 ? normalizeTaskOutcome(res.locals.executionResult.outcome)
-                : undefined
+                : undefined,
+            statusOfWorkflow: body.statusOfWorkflow === 'testBased' ? 'testBased' : 'run-based'
         };
         appendExecution(entry).catch(err => console.error('Failed to append execution:', err));
 
@@ -442,6 +444,7 @@ app.post('/api/tasks/:id/run-async', requireApiKey, dataRateLimiter, async (req,
             taskId,
             taskName: task.name || null,
             url: task.url || null,
+            statusOfWorkflow: task.statusOfWorkflow === 'testBased' ? 'testBased' : 'run-based',
             result: null
         });
     } catch (error) {
@@ -510,17 +513,9 @@ app.post('/headful', requireAuth, dataRateLimiter, concurrencyGate, (req, res) =
 });
 app.post('/headful/stop', requireAuth, stopHeadful);
 
-// Captures may be written to either the root-level or the src-level public/captures
-// directory depending on the entry point / image generation. Ensure both exist and
-// serve statically from both so files written by any engine are surfaced.
-const capturesDir = path.join(__dirname, 'public', 'captures');
-const srcCapturesDir = path.join(__dirname, 'src', 'public', 'captures');
-
-if (!fs.existsSync(capturesDir)) {
-    fs.mkdirSync(capturesDir, { recursive: true });
-}
-if (!fs.existsSync(srcCapturesDir)) {
-    fs.mkdirSync(srcCapturesDir, { recursive: true });
+// Serve configured promoted capture directories plus the legacy locations.
+for (const capturesDir of PROMOTED_CAPTURE_DIRS) {
+    if (!fs.existsSync(capturesDir)) fs.mkdirSync(capturesDir, { recursive: true });
 }
 
 // NoVNC Setup
@@ -541,8 +536,8 @@ if (novncDir) {
 }
 
 // Static Files
-app.use('/captures', requireAuthOrApiKey, express.static(capturesDir), express.static(srcCapturesDir));
-app.use('/screenshots', requireAuthOrApiKey, express.static(capturesDir), express.static(srcCapturesDir));
+app.use('/captures', requireAuthOrApiKey, ...PROMOTED_CAPTURE_DIRS.map((capturesDir) => express.static(capturesDir)));
+app.use('/screenshots', requireAuthOrApiKey, ...PROMOTED_CAPTURE_DIRS.map((capturesDir) => express.static(capturesDir)));
 app.use(express.static(DIST_DIR));
 
 // Headful Status Endpoint

@@ -9,7 +9,7 @@ const { appendExecution } = require('./storage');
 const { getNextRun, scheduleToCron, isValidCron } = require('./cron-parser');
 const { sendExecutionUpdate } = require('./state');
 const { buildWorkflowVariables } = require('./workflow-variables');
-const { normalizeTaskOutcome } = require('../agent/outcomes');
+const { normalizeTaskOutcome, normalizeWorkflowStatus } = require('../agent/outcomes');
 
 // Internal state
 let schedulerTimer = null;
@@ -164,6 +164,7 @@ async function tick(taskId) {
             path: `/api/tasks/${taskId}/api`,
             status: requestFailed ? 500 : 200,
             outcome: status,
+            statusOfWorkflow: normalizeWorkflowStatus(getTaskById(taskId)?.statusOfWorkflow),
             durationMs,
             source: 'scheduler',
             mode: 'unknown',

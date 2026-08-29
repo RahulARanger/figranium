@@ -3,6 +3,7 @@ const {
     findAntiBotReason,
     inspectPageForAntiBot,
     normalizeTaskOutcome,
+    normalizeWorkflowStatus,
     resolveTaskOutcome
 } = require('../src/agent/outcomes');
 const {
@@ -31,6 +32,12 @@ async function run() {
     assert.strictEqual(resolveTaskOutcome({ stopped: true }), 'stopped');
     assert.strictEqual(resolveTaskOutcome({ crashed: true, stopped: true }), 'crashed');
     assert.strictEqual(resolveTaskOutcome({ antiBot: true, crashed: true, stopped: true }), 'anti_bot');
+    assert.strictEqual(resolveTaskOutcome({ statusOfWorkflow: 'run-based', testBasedFailure: true }), 'success');
+    assert.strictEqual(resolveTaskOutcome({ statusOfWorkflow: 'testBased', testBasedFailure: true }), 'error');
+    assert.strictEqual(resolveTaskOutcome({ statusOfWorkflow: 'testBased', testBasedFailure: true, stopped: true }), 'stopped');
+    assert.strictEqual(normalizeWorkflowStatus(), 'run-based');
+    assert.strictEqual(normalizeWorkflowStatus('testBased'), 'testBased');
+    assert.strictEqual(normalizeWorkflowStatus('unknown'), 'run-based');
     assert.strictEqual(normalizeTaskOutcome('unknown', 'error'), 'error');
 
     assert.match(findAntiBotReason({ status: 403 }), /HTTP 403/);

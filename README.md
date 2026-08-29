@@ -277,6 +277,11 @@ Key capabilities of **Figranite** include:
 | `VITE_BACKEND_PORT` | Backend port for proxying + scripts. | `11345` |
 | `DB_TYPE` | Optional database type overriding disk storage. Set to `postgres` to use PostgreSQL. | — |
 | `TASK_WORKSPACE_PATH` | Folder for task and flow definitions. Configure this in `.env`; it takes precedence over legacy workspace state. | `data/` |
+| `FIGRANIUM_RECORDINGS_TEMP_DIR` | Temporary directory used by Playwright while an Agent recording is being produced. Relative paths resolve from the project root. | `data/recordings/` |
+| `FIGRANIUM_RECORDINGS_DIR` | Promoted directory for completed Agent recordings. | `public/captures/` |
+| `FIGRANIUM_SCREENSHOTS_TEMP_DIR` | Temporary directory used while screenshots are being written. | `data/screenshots/` |
+| `FIGRANIUM_SCREENSHOTS_DIR` | Promoted directory for screenshots surfaced by the Captures UI. | `public/captures/` |
+| `FIGRANIUM_RECORDING_RETENTION_COUNT` | Number of promoted recordings retained per task. Older recordings for that task are removed after promotion. | `10` |
 | `DB_POSTGRESDB_HOST` | Hostname for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `DB_POSTGRESDB_PORT` | Port for the PostgreSQL database (required if DB_TYPE is postgres). | — |
 | `DB_POSTGRESDB_USER` | Username for the PostgreSQL database (required if DB_TYPE is postgres). | — |
@@ -392,6 +397,24 @@ If enabled, provide the `x-api-key` header or `Authorization: Bearer <key>`. For
 
 In the editor, Agent Mode runs headlessly by default. Use the Headless/Headful toggle beside Run Task to launch a visible browser when a display is available.
 
+### Capture storage and retention
+
+Agent recordings and screenshots can be redirected in `.env`. Paths may be
+absolute or relative to the project root:
+
+```env
+FIGRANIUM_RECORDINGS_TEMP_DIR=./data/recordings
+FIGRANIUM_RECORDINGS_DIR=./public/captures
+FIGRANIUM_SCREENSHOTS_TEMP_DIR=./data/screenshots
+FIGRANIUM_SCREENSHOTS_DIR=./public/captures
+FIGRANIUM_RECORDING_RETENTION_COUNT=10
+```
+
+Agent recordings are finalized and promoted after normal completion, operator
+stop, and engine crash/error cleanup. The retention limit is applied per task
+using the task ID embedded in each promoted recording filename. Scrape and
+headful sessions do not create full-flow recordings.
+
 ### Workflow environment variables
 
 When the server starts, it loads `.env` from the directory where it was launched. Those values are available to every workflow through the existing `{$VARIABLE_NAME}` syntax, including Agent, Scrape, Headful, scheduled, API, UI, and MCP runs. Saved task values act as defaults, `.env` values override those defaults, and variables supplied for an individual run override both. Environment values are used at runtime and are not saved into task definitions. Variable names are case-sensitive.
@@ -473,7 +496,7 @@ Figranium includes a built-in scheduler that handles automated task execution wi
 
 # Data Lifecycle
 
-- Captures land in `public/captures`; regular cleanups can be scripted via `POST /api/clear-screenshots`.
+- Captures land in the configured promoted capture directories; regular cleanups can be scripted via `POST /api/clear-screenshots`.
 - Cookies are stored internally; clear them via the UI or `/api/clear-cookies`.
 - Proxy lists, user-agent preferences, and settings persist under `data/` (look for `proxies.json`, `allowed_ips.json`, etc.) — treat this directory as your config source control.
 - Use `Storage` controls in Settings to clear data after experimentation cycles, and keep `layouts` or `version` info tracked via `localStorage` as shown in `src/components/SettingsScreen.tsx`.

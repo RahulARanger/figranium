@@ -1,5 +1,6 @@
 export type TaskMode = 'scrape' | 'agent' | 'headful';
 export type TaskOutcome = 'success' | 'error' | 'stopped' | 'crashed' | 'anti_bot';
+export type WorkflowStatusMode = 'run-based' | 'testBased';
 
 export interface Credential {
     id: string;
@@ -73,6 +74,7 @@ export interface Action {
     value?: string;
     key?: string;
     disabled?: boolean;
+    failWorkflowOnError?: boolean;
     varName?: string;
     conditionVar?: string;
     conditionVarType?: VarType;
@@ -138,6 +140,7 @@ export interface Task {
     description?: string;
     url: string;
     mode: TaskMode;
+    statusOfWorkflow?: WorkflowStatusMode;
     wait: number;
     selector?: string;
     rotateUserAgents: boolean;
@@ -181,6 +184,7 @@ export interface Results {
     logs: string[];
     timestamp: string;
     outcome?: TaskOutcome;
+    statusOfWorkflow?: WorkflowStatusMode;
 }
 
 export interface Execution {
@@ -190,6 +194,7 @@ export interface Execution {
     path: string;
     status: number;
     outcome?: TaskOutcome;
+    statusOfWorkflow?: WorkflowStatusMode;
     durationMs: number;
     source: string;
     mode: string;

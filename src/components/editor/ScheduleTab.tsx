@@ -362,7 +362,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ currentTask, onUpdateTask }) 
                         <div>
                             <span className="text-xs font-bold text-[var(--app-text-muted)] uppercase tracking-[0.2em]">Last Run</span>
                             <p className="text-xs text-[var(--app-text)] mt-0.5">{new Date(schedule.lastRun).toLocaleString()}</p>
-                            <p className="text-[10px] text-[var(--app-text-muted)] mt-0.5 uppercase tracking-widest">{taskOutcomeLabel(normalizeTaskOutcome(schedule.lastRunStatus))}</p>
+                            <p className="text-[10px] text-[var(--app-text-muted)] mt-0.5 uppercase tracking-widest">{taskOutcomeLabel(normalizeTaskOutcome(schedule.lastRunStatus), currentTask.statusOfWorkflow)}</p>
                         </div>
                     </div>
                     {schedule.lastRunDurationMs != null && (

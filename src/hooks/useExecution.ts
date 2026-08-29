@@ -221,6 +221,7 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                 logs: data.logs || [],
                 timestamp: new Date().toLocaleTimeString(),
                 outcome: data.outcome,
+                statusOfWorkflow: taskToRun.statusOfWorkflow || 'run-based',
             });
             if (data.outcome === 'stopped') showAlert('Execution stopped.', 'success');
         } catch (e: any) {
@@ -267,6 +268,7 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                         logs: data.logs || [],
                         timestamp: new Date().toLocaleTimeString(),
                         outcome: data.outcome,
+                        statusOfWorkflow: taskToRun.statusOfWorkflow || 'run-based',
                     });
                     setIsExecuting(false);
                     return;

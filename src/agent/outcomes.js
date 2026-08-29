@@ -1,15 +1,26 @@
 const TASK_OUTCOMES = Object.freeze(['success', 'error', 'stopped', 'crashed', 'anti_bot']);
 const TASK_OUTCOME_SET = new Set(TASK_OUTCOMES);
+const WORKFLOW_STATUS_MODES = Object.freeze(['run-based', 'testBased']);
 
 const normalizeTaskOutcome = (value, fallback = 'success') => {
     const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
     return TASK_OUTCOME_SET.has(normalized) ? normalized : fallback;
 };
 
-const resolveTaskOutcome = ({ antiBot = false, crashed = false, stopped = false, explicitOutcome } = {}) => {
+const normalizeWorkflowStatus = (value) => value === 'testBased' ? 'testBased' : 'run-based';
+
+const resolveTaskOutcome = ({
+    antiBot = false,
+    crashed = false,
+    stopped = false,
+    explicitOutcome,
+    statusOfWorkflow = 'run-based',
+    testBasedFailure = false
+} = {}) => {
     if (antiBot) return 'anti_bot';
     if (crashed) return 'crashed';
     if (stopped) return 'stopped';
+    if (normalizeWorkflowStatus(statusOfWorkflow) === 'testBased' && testBasedFailure) return 'error';
     return normalizeTaskOutcome(explicitOutcome, 'success');
 };
 
@@ -86,7 +97,9 @@ const inspectPageForAntiBot = async (page, { status } = {}) => {
 
 module.exports = {
     TASK_OUTCOMES,
+    WORKFLOW_STATUS_MODES,
     normalizeTaskOutcome,
+    normalizeWorkflowStatus,
     resolveTaskOutcome,
     findAntiBotReason,
     inspectPageForAntiBot

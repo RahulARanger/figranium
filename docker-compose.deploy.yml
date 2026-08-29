@@ -11,4 +11,9 @@ services:
       - ./captures:/app/src/public/captures
     environment:
       - PORT=11345
+      - FIGRANIUM_RECORDINGS_TEMP_DIR=/app/data/recordings
+      - FIGRANIUM_RECORDINGS_DIR=/app/public/captures
+      - FIGRANIUM_SCREENSHOTS_TEMP_DIR=/app/data/screenshots
+      - FIGRANIUM_SCREENSHOTS_DIR=/app/public/captures
+      - FIGRANIUM_RECORDING_RETENTION_COUNT=10
     restart: unless-stopped

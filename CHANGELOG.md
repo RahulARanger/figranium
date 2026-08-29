@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.16.2] - 2026-08-29
+
+### Workflow status evaluation
+- Added configurable `statusOfWorkflow` modes: `run-based` preserves existing behavior, while `testBased` reports `Finished - Success`, `Failed`, or `Stopped` without changing execution flow.
+- Added per-action `failWorkflowOnError` controls, disabled by default, so selected step failures can mark a test-based run as Failed while continuing through the workflow and existing `On Error` handling.
+- Propagated workflow status mode through live results, execution history, scheduler metadata, and execution detail views, with task migration and Agent Spec documentation.
+
+### Capture storage and retention
+- Added `.env` configuration for temporary and promoted recording and screenshot directories.
+- Agent recordings are now promoted after normal completion, operator stop, and crash/error cleanup.
+- Added configurable per-task recording retention via `FIGRANIUM_RECORDING_RETENTION_COUNT`, defaulting to the latest 10 recordings per task.
+- Updated capture serving, listing, cleanup, Docker Compose configuration, and tests for configurable storage locations.
+
+## [0.16.1] - 2026-08-29
+
+### Packaging
+- Updated package and lockfile metadata and build packaging so the runtime can be installed directly from GitHub/npm with the published release configuration.
+
 ## [0.16.0] - 2026-08-29
 
 ### Execution outcomes

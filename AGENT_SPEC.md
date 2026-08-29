@@ -12,6 +12,7 @@ This document is a concise, implementation-focused reference for AI agents that 
   "description": "Optional human-readable description of what this task does. Shown on the canvas and included in the /api/tasks/list response so AI agents and operators have context.",
   "url": "https://example.com",
   "mode": "agent",
+  "statusOfWorkflow": "run-based",
   "wait": 2,
   "selector": "",
   "rotateUserAgents": false,
@@ -60,6 +61,14 @@ Common fields:
 - `disabled` (boolean): skip action.
 - `varName` (string): target variable for `set`, `merge`, `foreach`.
 - `conditionVar`, `conditionVarType`, `conditionOp`, `conditionValue`: structured conditions for `if` and `while`.
+- `failWorkflowOnError` (boolean): when `true`, this action's failure marks a `testBased` workflow as Failed. Defaults to `false`; it does not change execution flow.
+
+### Workflow status modes
+
+`statusOfWorkflow` controls only the final reported outcome and defaults to `run-based`:
+
+- `run-based`: preserves the existing behavior. Handled action failures do not change the final outcome unless the task explicitly stops with an error.
+- `testBased`: a failed action with `failWorkflowOnError: true` changes the final outcome to `error` (shown as Failed), while execution continues normally. A normally completed run is shown as Finished - Success, and operator cancellation remains `stopped`.
 
 ### Execution outcomes
 Completed `agent` and `scrape` executions return an `outcome` field with one of:

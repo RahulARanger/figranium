@@ -32,6 +32,7 @@ export const makeDefaultTask = (): Task => ({
     name: "Imported Task",
     url: "",
     mode: "scrape",
+    statusOfWorkflow: 'run-based',
     wait: 3,
     selector: "",
     rotateUserAgents: false,
@@ -69,6 +70,11 @@ export const normalizeImportedTask = (raw: any, index: number): Task | null => {
     if (!merged.stealth) merged.stealth = base.stealth;
     if (!merged.variables || Array.isArray(merged.variables)) merged.variables = {};
     if (!Array.isArray(merged.actions)) merged.actions = [];
+    merged.actions = merged.actions.map((action: any) => ({
+        ...action,
+        failWorkflowOnError: action.failWorkflowOnError === true
+    }));
+    if (!['run-based', 'testBased'].includes(merged.statusOfWorkflow as string)) merged.statusOfWorkflow = 'run-based';
     if (merged.rotateProxies === undefined) merged.rotateProxies = false;
     if (merged.disableRecording === undefined) merged.disableRecording = false;
     merged.disableRecording = parseBooleanFlag(merged.disableRecording);
@@ -84,6 +90,7 @@ export const buildNewTask = (): Task => {
         name: "Task " + Math.floor(Math.random() * 100),
         url: "",
         mode: "agent",
+        statusOfWorkflow: 'run-based',
         wait: 3,
         selector: "",
         rotateUserAgents: false,

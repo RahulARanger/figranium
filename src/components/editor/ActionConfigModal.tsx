@@ -206,6 +206,18 @@ const ActionConfigModal: React.FC<ActionConfigModalProps> = ({
 
         return (
             <div className="space-y-10">
+                <label className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={action.failWorkflowOnError === true}
+                        onChange={(e) => onUpdate(action.id, { failWorkflowOnError: e.target.checked }, true)}
+                        className="mt-0.5 accent-red-400"
+                    />
+                    <span className="space-y-1">
+                        <span className="block text-xs font-bold text-white uppercase tracking-widest">Fail workflow on error</span>
+                        <span className="block text-xs text-gray-500 leading-relaxed">In test-based status mode, a failure here marks the overall run Failed. Execution still continues.</span>
+                    </span>
+                </label>
                 {/* Selector field */}
                 {(action.type === 'click' || action.type === 'type' || action.type === 'hover' || action.type === 'wait_selector' || action.type === 'scroll') && (
                     field(action.type === 'scroll' ? 'Selector (Optional)' : 'Selector',

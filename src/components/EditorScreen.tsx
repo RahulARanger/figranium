@@ -336,7 +336,13 @@ const EditorScreen: React.FC<EditorScreenProps> = ({
     const NO_CONFIG_TYPES: Action['type'][] = ['else', 'end', 'on_error', 'do_nothing'];
 
     const addActionByType = (type: Action['type']) => {
-        const base: Action = { id: "act_" + Date.now() + "_" + Math.floor(Math.random() * 1000), type, selector: '', value: '' };
+        const base: Action = {
+            id: "act_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+            type,
+            selector: '',
+            value: '',
+            failWorkflowOnError: false
+        };
         if (type === 'set' || type === 'merge') base.varName = '';
         if (type === 'start') base.value = '';
         if (type === 'type') base.typeMode = 'replace';

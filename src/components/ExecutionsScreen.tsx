@@ -43,7 +43,7 @@ const renderExecutionRow = ({ index, style, data }: ListChildComponentProps<Exec
                         <div className="mt-1 text-[10px] theme-text-faint font-mono truncate">{execution.url || new Date(execution.timestamp).toLocaleString()}</div>
                     </div>
                 </div>
-                <div><span className={`app-badge ${taskOutcomeBadgeClass(outcome)}`}>{taskOutcomeLabel(outcome)}</span></div>
+                <div><span className={`app-badge ${taskOutcomeBadgeClass(outcome)}`}>{taskOutcomeLabel(outcome, execution.statusOfWorkflow)}</span></div>
                 <div className="text-[11px] theme-text-muted max-lg:hidden"><span className="uppercase">{execution.source}</span> · {execution.mode}</div>
                 <div className="max-lg:hidden">
                     <div className="text-[11px] theme-text-muted">{execution.durationMs}ms</div>

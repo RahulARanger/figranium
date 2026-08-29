@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { requireAuth, dataRateLimiter } = require('../middleware');
 const { getStorageStateFile } = require('../storage');
-const { DATA_DIR } = require('../constants');
+const { PROMOTED_CAPTURE_DIRS, TEMP_CAPTURE_DIRS } = require('../capture-config');
 
 const router = express.Router();
 // We need to resolve public/captures relative to where server.js runs usually, or use absolute path logic
@@ -12,10 +12,7 @@ const router = express.Router();
 // server.js was in root.
 // Captures may be written to either the root-level or the src-level public/captures
 // directory depending on the entry point / image generation. Unify by reading both.
-const CAPTURES_DIRS = [
-    path.join(__dirname, '../../../public/captures'),
-    path.join(__dirname, '../../../src/public/captures')
-];
+const CAPTURES_DIRS = PROMOTED_CAPTURE_DIRS;
 
 const readCapturesDir = async (dir, runId) => {
     try {
@@ -154,18 +151,16 @@ router.post('/clear-screenshots', requireAuth, dataRateLimiter, async (req, res)
             }));
         }
 
-        // 2. Clear data/recordings (temporary recordings)
-        const recordingsDir = path.join(DATA_DIR, 'recordings');
-        const recordingsExist = await fs.promises.access(recordingsDir).then(() => true).catch(() => false);
-        if (recordingsExist) {
-            const entries = await fs.promises.readdir(recordingsDir);
+        // 2. Clear configured temporary recording and screenshot directories.
+        for (const dir of TEMP_CAPTURE_DIRS) {
+            const tempExists = await fs.promises.access(dir).then(() => true).catch(() => false);
+            if (!tempExists) continue;
+            const entries = await fs.promises.readdir(dir);
             await Promise.all(entries.map(async (entry) => {
-                const entryPath = path.join(recordingsDir, entry);
+                const entryPath = path.join(dir, entry);
                 try {
                     const stat = await fs.promises.stat(entryPath);
-                    if (stat.isFile()) {
-                        await fs.promises.unlink(entryPath);
-                    }
+                    if (stat.isFile()) await fs.promises.unlink(entryPath);
                 } catch (e) {
                     // Ignore individual file errors
                 }

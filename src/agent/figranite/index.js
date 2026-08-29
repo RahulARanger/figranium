@@ -14,14 +14,51 @@ const { buildBlockMap, randomBetween, getForeachItems } = require('./helpers');
 const { evalStructuredCondition, evalCondition } = require('./logic-handler');
 const { executeAction } = require('./action-handler');
 const { solveCaptcha } = require('./captcha-client');
-const { resolveTaskOutcome, inspectPageForAntiBot } = require('../outcomes');
+const { resolveTaskOutcome, inspectPageForAntiBot, normalizeWorkflowStatus } = require('../outcomes');
 const { setStopChecker, setStopCleaner, consumeStopRequest, clearStopRequest } = require('../execution-control');
+const {
+    RECORDINGS_TEMP_DIR,
+    RECORDINGS_DIR,
+    SCREENSHOTS_TEMP_DIR,
+    SCREENSHOTS_DIR,
+    RECORDING_RETENTION_COUNT
+} = require('../../server/capture-config');
+const { ensureDirectory, moveCapture, cleanupRecordingsForTask } = require('../../server/capture-storage');
 
 const LIVE_DATA_MAX_CHARS = 120000;
 
 // Action types after which an auto-solve pass (task-level `autoSolveCaptcha`) checks for
 // a challenge — the points where navigation or a form interaction commonly triggers one.
 const AUTO_CAPTCHA_TRIGGER_TYPES = new Set(['navigate', 'goto', 'click', 'type', 'fill']);
+
+const sanitizeCapturePart = (value, fallback) => {
+    const sanitized = String(value || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+    return sanitized || fallback;
+};
+
+const promotePageRecording = async ({ page, context, captureTaskPrefix, captureRunId, handoffContext }) => {
+    if (handoffContext || !page) return null;
+
+    let video = null;
+    try { video = page.video?.(); } catch { return null; }
+    if (!video) return null;
+
+    try { if (context) await context.close(); } catch { /* video may still be available */ }
+
+    try {
+        const videoPath = await video.path();
+        const videoExists = videoPath && await fs.promises.access(videoPath).then(() => true).catch(() => false);
+        if (!videoExists) return null;
+
+        const recordingName = `${captureTaskPrefix}${captureRunId}_agent_${Date.now()}.webm`;
+        const recordingPath = await moveCapture(videoPath, RECORDINGS_DIR, recordingName);
+        await cleanupRecordingsForTask(RECORDINGS_DIR, captureTaskPrefix, RECORDING_RETENTION_COUNT);
+        return recordingPath;
+    } catch (error) {
+        console.error('Recording save failed:', error.message);
+        return null;
+    }
+};
 
 async function maybeAutoSolveCaptcha({ enabled, actionType, page, logs, identity }) {
     if (!enabled || !AUTO_CAPTCHA_TRIGGER_TYPES.has(actionType)) return;
@@ -65,6 +102,7 @@ class TaskInputError extends Error {
 async function runFigranite(data, options = {}) {
     let { url, actions, wait: globalWait, rotateUserAgents, rotateProxies, humanTyping, stealth = {}, sessionId } = data;
     const autoSolveCaptcha = parseBooleanFlag(data.autoSolveCaptcha);
+    const statusOfWorkflow = normalizeWorkflowStatus(data.statusOfWorkflow);
 
     const runtimeVars = getWorkflowVariables(data);
     let lastBlockOutput = null;
@@ -103,6 +141,7 @@ async function runFigranite(data, options = {}) {
 
     const runId = data.runId ? String(data.runId) : null;
     const captureRunId = sanitizeRunId(runId) || `run_${Date.now()}_unknown`;
+    const captureTaskPrefix = `${sanitizeCapturePart(data.taskId || data.taskSnapshot?.id, 'task')}_`;
     const includeShadowDomRaw = data.includeShadowDom;
     const includeShadowDom = includeShadowDomRaw === undefined
         ? true
@@ -158,8 +197,7 @@ async function runFigranite(data, options = {}) {
         const headless = options.headless !== undefined ? options.headless : true;
         const launchOptions = await launchBrowser({ rotateProxies: useRotateProxies, headless });
 
-        const recordingsDir = path.join(__dirname, '../../../data/recordings');
-        await fs.promises.mkdir(recordingsDir, { recursive: true });
+        await ensureDirectory(RECORDINGS_TEMP_DIR);
 
         const selectedUA = await selectUserAgent(rotateUserAgents);
         const rotateViewport = String(data.rotateViewport).toLowerCase() === 'true' || data.rotateViewport === true;
@@ -169,7 +207,7 @@ async function runFigranite(data, options = {}) {
             rotateViewport,
             statelessExecution,
             disableRecording,
-            recordingsDir,
+            recordingsDir: RECORDINGS_TEMP_DIR,
             includeShadowDom,
             sessionId,
             captchaInterceptionMode: hasCaptchaSolver ? 'solve' : (hasCaptchaWait ? 'observe' : null)
@@ -247,6 +285,7 @@ async function runFigranite(data, options = {}) {
         let stopRequested = false;
         let stopOutcome = 'success';
         let userStopped = false;
+        let testBasedFailure = false;
 
         const setLoopVars = (item, index, count) => {
             runtimeVars['loop.index'] = index;
@@ -262,19 +301,17 @@ async function runFigranite(data, options = {}) {
         };
 
         const ensureCapturesDir = async () => {
-            const capturesDir = path.join(__dirname, '../../../public', 'captures');
-            // ⚡ Bolt: Use non-blocking directory creation
-            await fs.promises.mkdir(capturesDir, { recursive: true });
-            return capturesDir;
+            return ensureDirectory(SCREENSHOTS_DIR);
         };
 
         const captureScreenshot = async (label) => {
-            const capturesDir = await ensureCapturesDir();
             const safeLabel = label ? String(label).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 24) : '';
             const nameSuffix = safeLabel ? `_${safeLabel}` : '';
             const screenshotName = `${captureRunId}_agent_${Date.now()}${nameSuffix}.png`;
-            const screenshotPath = path.join(capturesDir, screenshotName);
-            await page.screenshot({ path: screenshotPath, fullPage: false });
+            await ensureDirectory(SCREENSHOTS_TEMP_DIR);
+            const temporaryPath = path.join(SCREENSHOTS_TEMP_DIR, `${screenshotName}.${Date.now()}.png`);
+            await page.screenshot({ path: temporaryPath, fullPage: false });
+            await moveCapture(temporaryPath, SCREENSHOTS_DIR, screenshotName);
             return `/captures/${screenshotName}`;
         };
 
@@ -283,11 +320,11 @@ async function runFigranite(data, options = {}) {
         let liveScreenshotVersion = null;
         let liveData;
         const captureLiveScreenshot = async () => {
-            const capturesDir = await ensureCapturesDir();
-            const screenshotPath = path.join(capturesDir, liveScreenshotName);
-            const temporaryPath = path.join(capturesDir, `${liveScreenshotName}.${Date.now()}.png`);
+            await ensureCapturesDir();
+            await ensureDirectory(SCREENSHOTS_TEMP_DIR);
+            const temporaryPath = path.join(SCREENSHOTS_TEMP_DIR, `${liveScreenshotName}.${Date.now()}.png`);
             await page.screenshot({ path: temporaryPath, fullPage: false });
-            await fs.promises.rename(temporaryPath, screenshotPath);
+            await moveCapture(temporaryPath, SCREENSHOTS_DIR, liveScreenshotName);
             return `/captures/${liveScreenshotName}`;
         };
 
@@ -476,6 +513,7 @@ async function runFigranite(data, options = {}) {
                 } catch (err) {
                     logs.push(`FAILED condition: ${err.message}`);
                     reportProgress(runId, { actionId: act.id, status: 'error' });
+                    if (parseBooleanFlag(act.failWorkflowOnError)) testBasedFailure = true;
                     if (errorHandler && !inErrorHandler) {
                         inErrorHandler = true;
                         index = errorHandler.start;
@@ -509,6 +547,7 @@ async function runFigranite(data, options = {}) {
                 } catch (err) {
                     logs.push(`FAILED condition: ${err.message}`);
                     reportProgress(runId, { actionId: act.id, status: 'error' });
+                    if (parseBooleanFlag(act.failWorkflowOnError)) testBasedFailure = true;
                     if (errorHandler && !inErrorHandler) {
                         inErrorHandler = true;
                         index = errorHandler.start;
@@ -632,6 +671,7 @@ async function runFigranite(data, options = {}) {
                 }
                 logs.push(`FAILED action ${act.type}: ${err.message}`);
                 await publishLiveSnapshot({ actionId: act.id, status: 'error' });
+                if (parseBooleanFlag(act.failWorkflowOnError)) testBasedFailure = true;
                 if (errorHandler && !inErrorHandler) {
                     inErrorHandler = true;
                     index = errorHandler.start;
@@ -706,16 +746,9 @@ async function runFigranite(data, options = {}) {
         const extractionScript = extractionScriptRaw ? resolveTemplate(extractionScriptRaw) : undefined;
         const extraction = await runExtractionScript(extractionScript, cleanedHtml, page.url(), includeShadowDom);
 
-        const capturesDir = path.join(__dirname, '../../../public', 'captures');
-        // ⚡ Bolt: Use non-blocking directory creation
-        await fs.promises.mkdir(capturesDir, { recursive: true });
-
-        const screenshotName = `${captureRunId}_agent_${Date.now()}.png`;
-        const screenshotPath = path.join(capturesDir, screenshotName);
-        let screenshotSuccess = false;
+        let screenshotUrl = null;
         try {
-            await page.screenshot({ path: screenshotPath, fullPage: false });
-            screenshotSuccess = true;
+            screenshotUrl = await captureScreenshot();
         } catch (e) {
             console.error('Agent Screenshot failed:', e.message);
         }
@@ -749,7 +782,9 @@ async function runFigranite(data, options = {}) {
         const outcome = resolveTaskOutcome({
             antiBot: antiBot.detected,
             stopped: userStopped,
-            explicitOutcome: stopRequested ? stopOutcome : 'success'
+            explicitOutcome: stopRequested ? stopOutcome : 'success',
+            statusOfWorkflow,
+            testBasedFailure
         });
         if (antiBot.reason) logs.push(`[OUTCOME] Anti-bot detected: ${antiBot.reason}.`);
 
@@ -760,39 +795,10 @@ async function runFigranite(data, options = {}) {
             logs: logs || [],
             html: (extractionScript && !includeHtml) ? undefined : (typeof cleanedHtml === 'string' ? safeFormatHTML(cleanedHtml) : ''),
             data: formattedExtraction,
-            screenshot_url: screenshotSuccess ? `/captures/${screenshotName}` : null
+            screenshot_url: screenshotUrl
         };
 
-        const video = page.video();
-        if (!options.handoffContext) {
-            try { await context.close(); } catch { }
-        }
-
-        if (video) {
-            try {
-                const videoPath = await video.path();
-                // ⚡ Bolt: Use non-blocking existence check
-                const videoExists = videoPath && await fs.promises.access(videoPath).then(() => true).catch(() => false);
-                if (videoExists) {
-                    const recordingName = `${captureRunId}_agent_${Date.now()}.webm`;
-                    const recordingPath = path.join(capturesDir, recordingName);
-                    try {
-                        // ⚡ Bolt: Use non-blocking move
-                        await fs.promises.rename(videoPath, recordingPath);
-                    } catch (err) {
-                        if (err && err.code === 'EXDEV') {
-                            // ⚡ Bolt: Use non-blocking copy/unlink if move across filesystems fails
-                            await fs.promises.copyFile(videoPath, recordingPath);
-                            await fs.promises.unlink(videoPath);
-                        } else {
-                            throw err;
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Recording save failed:', e.message);
-            }
-        }
+        await promotePageRecording({ page, context, captureTaskPrefix, captureRunId, handoffContext: options.handoffContext });
 
         if (options.handoffContext) {
             return {
@@ -811,9 +817,7 @@ async function runFigranite(data, options = {}) {
             logs.push(`[OUTCOME] Anti-bot detected: ${antiBot.reason}.`);
         }
         error.executionLogs = logs;
-        try {
-            if (context) await context.close();
-        } catch { }
+        await promotePageRecording({ page, context, captureTaskPrefix, captureRunId, handoffContext: options.handoffContext });
         if (browser) await browser.close();
         throw error;
     }

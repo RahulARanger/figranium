@@ -73,6 +73,11 @@ export function useTasks(
         migratedTask.disableRecording = parseBooleanFlag(migratedTask.disableRecording);
         if (migratedTask.statelessExecution === undefined) migratedTask.statelessExecution = false;
         migratedTask.statelessExecution = parseBooleanFlag(migratedTask.statelessExecution);
+        if (!['run-based', 'testBased'].includes(migratedTask.statusOfWorkflow as string)) migratedTask.statusOfWorkflow = 'run-based';
+        migratedTask.actions = (migratedTask.actions || []).map((action) => ({
+            ...action,
+            failWorkflowOnError: action.failWorkflowOnError === true
+        }));
         const normalized = ensureActionIds(migratedTask);
         setCurrentTask(normalized);
         markTaskAsSaved(normalized);

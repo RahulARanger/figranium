@@ -277,6 +277,22 @@ const TaskSettingsCabinet: React.FC<TaskSettingsCabinetProps & {
                                         </button>
                                     </div>
                                 </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-xs font-bold text-[var(--app-text-muted)] uppercase tracking-[0.2em]">Workflow Status</label>
+                                    <CustomSelect
+                                        value={currentTask.statusOfWorkflow || 'run-based'}
+                                        onChange={(statusOfWorkflow) => onUpdateTask({ statusOfWorkflow: statusOfWorkflow as Task['statusOfWorkflow'] })}
+                                        options={[
+                                            { value: 'run-based', label: 'Run-based', icon: 'play_circle' },
+                                            { value: 'testBased', label: 'Test-based', icon: 'fact_check' },
+                                        ]}
+                                        ariaLabel="Workflow status mode"
+                                    />
+                                    <p className="text-xs text-[var(--app-text-faint)] leading-relaxed">
+                                        Run-based keeps the current result behavior. Test-based can mark the run Failed when a configured step fails, while the workflow continues.
+                                    </p>
+                                </div>
                             </div>
                         )}
 

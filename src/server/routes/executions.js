@@ -2,7 +2,7 @@ const express = require('express');
 const { requireAuth, requireApiKey, requireAuthOrApiKey } = require('../middleware');
 const { loadExecutions, saveExecutions, getExecutionById } = require('../storage');
 const { executionStreams, getExecutionSnapshot, stopRequests, sendExecutionUpdate } = require('../state');
-const { normalizeTaskOutcome } = require('../../agent/outcomes');
+const { normalizeTaskOutcome, normalizeWorkflowStatus } = require('../../agent/outcomes');
 
 const router = express.Router();
 
@@ -23,6 +23,7 @@ const summarizeExecution = (exec) => ({
     path: exec.path,
     status: exec.status,
     outcome: getExecutionOutcome(exec),
+    statusOfWorkflow: normalizeWorkflowStatus(exec.statusOfWorkflow),
     durationMs: exec.durationMs,
     source: normalizeExecutionSource(exec.source),
     mode: exec.mode,
