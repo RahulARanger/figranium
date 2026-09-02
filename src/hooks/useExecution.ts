@@ -12,6 +12,7 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
     const [activeRunId, setActiveRunId] = useState<string | null>(null);
     const useNovnc = useHeadfulStatus();
     const executeAbortRef = useRef<AbortController | null>(null);
+    const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         if (!activeRunId) return;
@@ -88,6 +89,7 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
     const stopTask = async () => {
         if (!activeRunId || isStopping) return;
         setIsStopping(true);
+
         if (activeRunId) {
             try {
                 await fetch('/api/executions/stop', {
@@ -97,10 +99,18 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                 });
             } catch (e) {
                 console.error('Failed to request stop', e);
-                setIsStopping(false);
-                showAlert('Failed to request execution stop.', 'error');
             }
         }
+
+        if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = setTimeout(() => {
+            if (executeAbortRef.current) {
+                executeAbortRef.current.abort();
+            }
+            setIsExecuting(false);
+            setIsStopping(false);
+            showAlert('Execution stopped.', 'success');
+        }, 3000);
     };
 
     const runTaskWithSnapshot = async (
@@ -145,24 +155,13 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                 });
             };
 
-            const resolveMaybe = (value?: string) => {
-                if (typeof value !== 'string') return value;
-                return resolveTemplate(value);
-            };
-
-            const shouldResolve = taskToRun.mode !== 'agent';
             const resolvedTask = {
                 ...taskToRun,
-                url: shouldResolve ? resolveTemplate(taskToRun.url || '') : (taskToRun.url || ''),
-                selector: shouldResolve ? resolveMaybe(taskToRun.selector) : taskToRun.selector,
-                actions: shouldResolve
-                    ? taskToRun.actions.map((action) => ({
-                        ...action,
-                        selector: resolveMaybe(action.selector),
-                        value: resolveMaybe(action.value),
-                        key: resolveMaybe(action.key)
-                    }))
-                    : taskToRun.actions
+                // URLs are known before the run and scrape mode needs a concrete URL.
+                // Action inputs must stay templated: their values can be produced by a
+                // preceding block (for example {$block.output} -> {$adjective}).
+                url: resolveTemplate(taskToRun.url || ''),
+                actions: taskToRun.actions
             };
 
             payload = {
@@ -295,6 +294,10 @@ export function useExecution(showAlert: (msg: string, tone?: 'success' | 'error'
                 setIsExecuting(false);
             }
         } finally {
+            if (stopTimeoutRef.current) {
+                clearTimeout(stopTimeoutRef.current);
+                stopTimeoutRef.current = null;
+            }
             executeAbortRef.current = null;
             setIsExecuting(false);
             setIsStopping(false);

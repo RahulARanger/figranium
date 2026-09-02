@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.3] - 2026-09-03
+
+### Editor and execution
+- Added atomic loop canvas blocks, constrained cross-scope dragging, and redesigned loop connectors for `while`, `repeat`, and `foreach` actions.
+- Added run-through-block testing with resolved inputs, variables, execution logs, screenshots, status, duration, and cancellation support.
+- Added drag-and-drop variable insertion for text and code inputs, reusable variable palettes, and permanent deletion of individual Task versions.
+- Added automatic force-stop handling after three seconds of a requested stop.
+
+### Fixes
+- Captured downloads from pages that already exist when a persistent browser context starts, in addition to newly opened pages.
+- Preserved runtime block variables and exposed reserved variables in the editor variable picker.
+
 ## [0.16.2] - 2026-08-29
 
 ### Workflow status evaluation
